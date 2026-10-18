@@ -4,8 +4,11 @@
 
 Plug into any harness. Keep every memory. Never leave your infrastructure.
 
-> **Not another mem0**: this is a *middleware* over MCP — not a cloud service and not a framework.
-> You self-host it, your data never leaves your machine, and any harness that speaks MCP can use it.
+> **Not another mem0 — and not Basic Memory either.** Three things nobody ships together:
+>
+> 1. **Enterprise governance out of the box** — multi-tenant isolation, audit log, TTL / right-to-be-forgotten.
+> 2. **One static binary, fully offline** — no HuggingFace download, no LLM dependency, no graph database.
+> 3. **Middleware, not a framework** — ≤5 tools over MCP; any harness plugs in, nothing gets taken over.
 
 ---
 
@@ -13,12 +16,14 @@ Plug into any harness. Keep every memory. Never leave your infrastructure.
 
 ## 为什么不同
 
-| | 云端记忆服务 | 框架内置记忆 | **memalyze** |
-|---|---|---|---|
-| 数据位置 | 厂商云 | 随框架 | **你自己的服务器** |
-| 接入方式 | 私有 API | 绑定框架 | **MCP（任何 harness）** |
-| 企业治理 | ❌ | ❌ | **多租户 / 审计（商用版）** |
-| 部署 | SaaS | 跟着框架走 | **单二进制 / 5 分钟 Docker** |
+| | 云端记忆服务 | 框架内置记忆 | 个人知识库（Basic Memory） | **memalyze** |
+|---|---|---|---|---|
+| 数据位置 | 厂商云 | 随框架 | 本地 Markdown | **你自己的服务器** |
+| 接入方式 | 私有 API | 绑定框架 | MCP | **MCP（任何 harness）** |
+| 企业治理 | ❌ | ❌ | ❌ | **多租户 / 审计 / TTL** |
+| 部署 | SaaS | 跟着框架走 | 173 个 Python 包 | **单二进制 / 5 分钟 Docker** |
+| 离线可用 | ❌ | 部分 | ⚠️ 语义检索要下 HuggingFace 模型 | **✅ 本地 embedding，完全离线** |
+| 工具面 | — | — | 23 个工具 | **≤5 个** |
 
 ## 快速开始
 
