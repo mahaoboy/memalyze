@@ -1,0 +1,80 @@
+package memory
+
+import (
+	"context"
+	"net/http"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/mahaoboy/memalyze/internal/embed"
+	"github.com/mahaoboy/memalyze/internal/embed/ollama"
+	"github.com/mahaoboy/memalyze/internal/store/sqlite"
+	"github.com/mahaoboy/memalyze/pkg/types"
+)
+
+// TestIntegrationRealEmbedding 用真实本地模型验证 S10 的写入路径。
+//
+//	MEMALYZE_IT=1 go test ./internal/memory/ -run TestIntegrationRealEmbedding -v
+func TestIntegrationRealEmbedding(t *testing.T) {
+	if os.Getenv("MEMALYZE_IT") == "" {
+		t.Skip("set MEMALYZE_IT=1 to run against local Ollama")
+	}
+	ctx := context.Background()
+	st, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "it.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer st.Close()
+
+	model := "qwen3-embedding:0.6b"
+	client := ollama.New("http://127.0.0.1:11434", model,
+		ollama.WithHTTPClient(&http.Client{Timeout: 120 * time.Second}))
+	svc := New(st, client)
+
+	docs := []string{
+		"向量检索先用暴力余弦，超过十万条再考虑索引",
+		"许可证定为 AGPL-3.0 加商业双许可",
+		"每周三固定两小时处理 issue 和社区",
+	}
+	ids := make([]string, len(docs))
+	for i, d := range docs {
+		res, err := svc.Add(ctx, Input{TenantID: "it", Scope: "e2e", Content: d, Kind: types.KindFact})
+		if err != nil {
+			t.Fatalf("add %d: %v", i, err)
+		}
+		if !res.Embedded || res.EmbeddingFailed {
+			t.Fatalf("add %d should embed: %+v", i, res)
+		}
+		ids[i] = res.ID
+	}
+
+	// 用语义改写查询：不共享关键词，只能靠向量
+	qvec, err := embed.EmbedQuery(ctx, client, "什么时候该上索引")
+	if err != nil {
+		t.Fatalf("embed query: %v", err)
+	}
+	if len(qvec) != 1024 {
+		t.Fatalf("query dim = %d, want 1024", len(qvec))
+	}
+	hits, err := st.SearchVector(ctx, types.SearchQuery{TenantID: "it", Limit: 3}, model, qvec)
+	if err != nil {
+		t.Fatalf("vector search: %v", err)
+	}
+	if len(hits) != 3 {
+		t.Fatalf("want 3 hits, got %d", len(hits))
+	}
+	if hits[0].Memory.ID != ids[0] {
+		t.Fatalf("expected index-related memory first, got %q", hits[0].Memory.Content)
+	}
+
+	// 重复写入：真实链路下也必须只留一条
+	dup, err := svc.Add(ctx, Input{TenantID: "it", Scope: "e2e", Content: docs[0]})
+	if err != nil {
+		t.Fatalf("duplicate add: %v", err)
+	}
+	if !dup.Duplicate || dup.ID != ids[0] {
+		t.Fatalf("duplicate handling broken: %+v", dup)
+	}
+}

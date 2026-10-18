@@ -49,8 +49,8 @@ mcporter list --stdio "$(pwd)/memalyze"
 - [x] 数据模型设计
 - [x] 环境与 MCP 跑通（`echo` 工具已在 claude-code / mcporter 验证）
 - [x] 存储层（SQLite + 二元组分词 FTS5 + 向量检索）
-- [ ] 写入 API（去重 / 异步 embedding）
-- [ ] 检索排序（向量优先 + 降级）
+- [x] 写入 API（重复检测 / 向量化失败不阻塞 / Reembed）
+- [ ] 检索编排（向量优先 + 关键词保底 + 超时降级）
 - [ ] MCP 工具三件套（`memory_add` / `memory_search` / `memory_delete`）
 
 ## 许可证
