@@ -55,6 +55,7 @@ type Service struct {
 	store        store.Store
 	embedder     embed.Embedder
 	embedTimeout time.Duration
+	queryTimeout time.Duration
 	now          func() time.Time
 }
 
@@ -66,6 +67,15 @@ func WithEmbedTimeout(d time.Duration) Option {
 	return func(s *Service) {
 		if d > 0 {
 			s.embedTimeout = d
+		}
+	}
+}
+
+// WithQueryTimeout 设置检索侧 embedding 超时（默认 3s）。
+func WithQueryTimeout(d time.Duration) Option {
+	return func(s *Service) {
+		if d > 0 {
+			s.queryTimeout = d
 		}
 	}
 }
@@ -85,6 +95,7 @@ func New(st store.Store, e embed.Embedder, opts ...Option) *Service {
 		store:        st,
 		embedder:     e,
 		embedTimeout: DefaultEmbedTimeout,
+		queryTimeout: DefaultQueryTimeout,
 		now:          time.Now,
 	}
 	for _, o := range opts {

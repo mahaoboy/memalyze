@@ -43,6 +43,9 @@ type Store interface {
 	// SearchVector 走暴力余弦向量检索（v0.1 适用 < 1 万条）。
 	SearchVector(ctx context.Context, q types.SearchQuery, model string, vec []float32) ([]types.SearchHit, error)
 
+	// Recent 按创建时间倒序列出记忆（Query 为空时的"列表"语义，不做相关性排序）。
+	Recent(ctx context.Context, q types.SearchQuery) ([]types.SearchHit, error)
+
 	// Close 关闭底层连接。
 	Close() error
 }

@@ -50,8 +50,8 @@ mcporter list --stdio "$(pwd)/memalyze"
 - [x] 环境与 MCP 跑通（`echo` 工具已在 claude-code / mcporter 验证）
 - [x] 存储层（SQLite + 二元组分词 FTS5 + 向量检索）
 - [x] 写入 API（重复检测 / 向量化失败不阻塞 / Reembed）
-- [ ] 检索编排（向量优先 + 关键词保底 + 超时降级）
-- [ ] MCP 工具三件套（`memory_add` / `memory_search` / `memory_delete`）
+- [x] 检索编排（向量优先 / 关键词补位 / 3 秒超时降级）
+- [ ] MCP 工具三件套（`memory_add` / `memory_search` / `memory_delete`）← 进行中
 
 ## 许可证
 

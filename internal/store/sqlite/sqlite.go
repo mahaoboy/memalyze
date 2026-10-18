@@ -297,6 +297,36 @@ func (s *Store) SearchVector(ctx context.Context, q types.SearchQuery, model str
 	return hits, nil
 }
 
+// Recent 按创建时间倒序返回（空查询时的列表语义）。
+func (s *Store) Recent(ctx context.Context, q types.SearchQuery) ([]types.SearchHit, error) {
+	if q.TenantID == "" {
+		return nil, fmt.Errorf("%w: tenant_id required", store.ErrInvalid)
+	}
+	where, args := buildFilter(q, time.Now())
+	query := `SELECT ` + memoryColumns + ` FROM memories m WHERE 1 = 1` + where +
+		` ORDER BY m.created_at DESC, m.id DESC LIMIT ?`
+	args = append(args, limitOf(q))
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: recent: %w", err)
+	}
+	defer rows.Close()
+
+	var hits []types.SearchHit
+	for rows.Next() {
+		m, err := scanMemory(rows)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: scan recent: %w", err)
+		}
+		hits = append(hits, types.SearchHit{Memory: *m, MatchedBy: []string{"recent"}})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: recent rows: %w", err)
+	}
+	return hits, nil
+}
+
 // ---- 内部辅助 ----
 
 const memoryColumns = `id, tenant_id, scope, content, kind, source, metadata, status,
@@ -459,7 +489,12 @@ func memoryFromTargets(targets []any) *types.Memory {
 	return m
 }
 
-func scanMemory(row *sql.Row) (*types.Memory, error) {
+// scanner 同时接受 *sql.Row 与 *sql.Rows。
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanMemory(row scanner) (*types.Memory, error) {
 	targets := memoryScanTargets()
 	if err := row.Scan(targets...); err != nil {
 		return nil, err

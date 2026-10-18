@@ -78,3 +78,68 @@ func TestIntegrationRealEmbedding(t *testing.T) {
 		t.Fatalf("duplicate handling broken: %+v", dup)
 	}
 }
+
+// TestIntegrationSearch 用真实模型验证 S11 的「向量优先 + 关键词补位」。
+func TestIntegrationSearch(t *testing.T) {
+	if os.Getenv("MEMALYZE_IT") == "" {
+		t.Skip("set MEMALYZE_IT=1 to run against local Ollama")
+	}
+	ctx := context.Background()
+	st, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "it-search.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer st.Close()
+
+	client := ollama.New("http://127.0.0.1:11434", "qwen3-embedding:0.6b",
+		ollama.WithHTTPClient(&http.Client{Timeout: 120 * time.Second}))
+	svc := New(st, client)
+
+	docs := []string{
+		"许可证定为 AGPL-3.0 加商业双许可",
+		"周日强制休息，不写代码",
+		"审计日志要能导出，按时间倒序",
+	}
+	ids := make([]string, len(docs))
+	for i, d := range docs {
+		res, err := svc.Add(ctx, Input{TenantID: "it", Content: d})
+		if err != nil {
+			t.Fatalf("add %d: %v", i, err)
+		}
+		ids[i] = res.ID
+	}
+
+	// 语义改写：不共享关键词，必须靠向量
+	res, err := svc.Search(ctx, types.SearchQuery{TenantID: "it", Query: "哪天不用上班", Limit: 3})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if res.Degraded {
+		t.Fatalf("should not degrade: %s", res.DegradeReason)
+	}
+	if len(res.Hits) == 0 || res.Hits[0].Memory.ID != ids[1] {
+		t.Fatalf("expected 周日 memory first, got %+v", res.Hits)
+	}
+
+	// 精确词：关键词路径能命中（这里向量也在，mathed_by 至少有一个）
+	res, err = svc.Search(ctx, types.SearchQuery{TenantID: "it", Query: "审计", Limit: 3})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if len(res.Hits) == 0 || res.Hits[0].Memory.ID != ids[2] {
+		t.Fatalf("expected 审计 memory first, got %+v", res.Hits)
+	}
+
+	// 无 embedder → 降级但仍有结果
+	degradedSvc := New(st, nil)
+	res, err = degradedSvc.Search(ctx, types.SearchQuery{TenantID: "it", Query: "审计", Limit: 3})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if !res.Degraded || res.DegradeReason != DegradeNoEmbedder {
+		t.Fatalf("want degraded no_embedder, got %+v", res)
+	}
+	if len(res.Hits) == 0 {
+		t.Fatal("keyword fallback should still return results")
+	}
+}
