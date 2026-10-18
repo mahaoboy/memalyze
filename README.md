@@ -27,7 +27,10 @@ Plug into any harness. Keep every memory. Never leave your infrastructure.
 
 ## 快速开始
 
+需要本地 [Ollama](https://ollama.com) 与中文 embedding 模型（离线可用，不依赖任何云服务）：
+
 ```bash
+ollama pull qwen3-embedding:0.6b   # 1024 维，默认模型
 go build -o memalyze ./cmd/memalyze
 
 # Claude Code
@@ -45,7 +48,7 @@ mcporter list --stdio "$(pwd)/memalyze"
 - [x] 技术选型（Go / SQLite→Postgres / MCP）
 - [x] 数据模型设计
 - [x] 环境与 MCP 跑通（`echo` 工具已在 claude-code / mcporter 验证）
-- [ ] 核心链路
+- [ ] 核心链路（存储 / 写入 / 检索 / MCP 工具）
 
 ## 许可证
 
