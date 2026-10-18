@@ -39,7 +39,7 @@ mcporter list --stdio "$(pwd)/memalyze"
 - [x] 立项与定位
 - [x] 技术选型（Go / SQLite→Postgres / MCP）
 - [x] 数据模型设计
-- [ ] 环境与 MCP 跑通
+- [x] 环境与 MCP 跑通（`echo` 工具已在 claude-code / mcporter 验证）
 - [ ] 核心链路
 
 ## 许可证
