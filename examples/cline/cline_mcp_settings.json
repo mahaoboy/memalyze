@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "memalyze": {
+      "command": "/absolute/path/to/memalyze",
+      "args": [],
+      "env": {
+        "MEMALYZE_DB": "/absolute/path/to/memalyze.db",
+        "MEMALYZE_TENANT": "default"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "memory_search"
+      ],
+      "timeout": 60
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "memalyze": {
+      "type": "stdio",
+      "command": "/absolute/path/to/memalyze",
+      "args": [],
+      "env": {
+        "MEMALYZE_DB": "/absolute/path/to/memalyze.db",
+        "MEMALYZE_TENANT": "default"
+      }
+    }
+  }
+}
