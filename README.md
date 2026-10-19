@@ -12,7 +12,7 @@ Plug into any harness. Keep every memory. Never leave your infrastructure.
 
 ---
 
-🚧 **早期开发中** — 骨架 + MCP hello-world（[任务 S6](../../文档/mahao/mahao/一人企业OPC/07-执行计划/任务分解.md)）。
+🚧 **早期开发中** — 核心链路已通（存储 / 写入 / 检索 / MCP 三件套，S12）。下一步：上下文注入与端到端验证。
 
 ## 为什么不同
 
@@ -40,7 +40,30 @@ claude mcp add memalyze -- "$(pwd)/memalyze"
 mcporter list --stdio "$(pwd)/memalyze"
 ```
 
-当前只暴露一个 `echo` 工具，用于验证链路：工具可见、可调用。
+### MCP 工具
+
+| 工具 | 作用 |
+|---|---|
+| `memory_add` | 写入记忆；返回 `duplicate` / `embedded` / `embedding_failed` |
+| `memory_search` | 向量优先 + 关键词补位；返回 `degraded` / `degrade_reason` |
+| `memory_delete` | 按 id 软删除（已删除可重试） |
+| `echo` | 链路自检，不含业务逻辑 |
+
+### 配置
+
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `MEMALYZE_DB` | `./memalyze.db` | SQLite 文件路径 |
+| `MEMALYZE_OLLAMA_URL` | `http://127.0.0.1:11434` | 本地 Ollama 地址 |
+| `MEMALYZE_EMBED_MODEL` | `qwen3-embedding:0.6b` | embedding 模型 |
+| `MEMALYZE_TENANT` | `default` | 工具调用的默认租户 |
+
+Ollama 暂时连不上时服务仍会启动：写入会保留记忆并返回 `embedding_failed=true`，检索会返回 `degraded=true` 并自动降级为纯关键词。
+
+```bash
+mcporter call --stdio "$(pwd)/memalyze" memory_add content="许可证定为 AGPL-3.0" scope=project:opc
+mcporter call --stdio "$(pwd)/memalyze" memory_search query="许可证"
+```
 
 ## 状态
 
@@ -51,7 +74,8 @@ mcporter list --stdio "$(pwd)/memalyze"
 - [x] 存储层（SQLite + 二元组分词 FTS5 + 向量检索）
 - [x] 写入 API（重复检测 / 向量化失败不阻塞 / Reembed）
 - [x] 检索编排（向量优先 / 关键词补位 / 3 秒超时降级）
-- [ ] MCP 工具三件套（`memory_add` / `memory_search` / `memory_delete`）← 进行中
+- [x] MCP 工具三件套（`memory_add` / `memory_search` / `memory_delete`）
+- [ ] 上下文注入与端到端验证（S13 / S14）
 
 ## 许可证
 

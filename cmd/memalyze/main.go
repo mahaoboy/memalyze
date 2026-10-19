@@ -4,6 +4,8 @@
 //
 //	memalyze            # 在 stdio 上提供 MCP 服务
 //	memalyze --version  # 打印版本
+//
+// 配置全部走环境变量，见 internal/config。
 package main
 
 import (
@@ -12,7 +14,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mahaoboy/memalyze/internal/config"
+	"github.com/mahaoboy/memalyze/internal/embed/ollama"
 	"github.com/mahaoboy/memalyze/internal/mcp"
+	"github.com/mahaoboy/memalyze/internal/memory"
+	"github.com/mahaoboy/memalyze/internal/store/sqlite"
 )
 
 // version 由 goreleaser / -ldflags 注入。
@@ -30,8 +36,25 @@ func main() {
 	// 注意：stdout 是 MCP 协议通道，日志只能走 stderr。
 	fmt.Fprintf(os.Stderr, "memalyze %s — MCP-native, self-hosted memory for AI agents\n", version)
 
-	// S6：当前只有 echo 工具；S9+ 在此接入 store / embed / search。
-	if err := mcp.Serve(context.Background(), version); err != nil {
+	cfg := config.Load()
+	ctx := context.Background()
+
+	st, err := sqlite.Open(ctx, cfg.DBPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "memalyze: open database: %v\n", err)
+		os.Exit(1)
+	}
+	defer st.Close()
+
+	// 这里只构造客户端、不做启动探活：Ollama 暂时不可用时服务仍能启动，
+	// 写入会保留记忆并标记 embedding_failed，检索会降级为纯关键词。
+	embedder := ollama.New(cfg.OllamaURL, cfg.EmbedModel)
+	svc := memory.New(st, embedder)
+
+	fmt.Fprintf(os.Stderr, "memalyze: db=%s tenant=%s embed=%s ollama=%s\n",
+		cfg.DBPath, cfg.Tenant, cfg.EmbedModel, cfg.OllamaURL)
+
+	if err := mcp.Serve(ctx, version, svc, cfg.Tenant); err != nil {
 		fmt.Fprintf(os.Stderr, "memalyze: %v\n", err)
 		os.Exit(1)
 	}

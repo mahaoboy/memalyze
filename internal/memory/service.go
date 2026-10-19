@@ -147,6 +147,27 @@ func (s *Service) Add(ctx context.Context, in Input) (Result, error) {
 	return res, nil
 }
 
+// Delete 软删除一条记忆。
+//
+// 语义：
+//   - 不存在（或不属于该租户）→ store.ErrNotFound，不伪装成功
+//   - 已删除 → 幂等成功（便于客户端重试）
+//   - 空 tenant / id → ErrInvalid
+func (s *Service) Delete(ctx context.Context, tenantID, memoryID string) error {
+	if s.store == nil {
+		return fmt.Errorf("%w: nil store", store.ErrInvalid)
+	}
+	tenantID = strings.TrimSpace(tenantID)
+	memoryID = strings.TrimSpace(memoryID)
+	if tenantID == "" {
+		return fmt.Errorf("%w: tenant_id required", store.ErrInvalid)
+	}
+	if memoryID == "" {
+		return fmt.Errorf("%w: memory id required", store.ErrInvalid)
+	}
+	return s.store.SoftDelete(ctx, tenantID, memoryID)
+}
+
 // Reembed 重新计算某条记忆的向量（换模型、或上次 embedding 失败时补算）。
 //
 // 与 Add 不同：这是显式操作，失败会返回错误（调用方需要知道没成功）。

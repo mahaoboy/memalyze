@@ -322,3 +322,39 @@ func TestAddDefaultsTenantAndScope(t *testing.T) {
 		t.Fatalf("defaults not applied: scope=%s kind=%s", m.Scope, m.Kind)
 	}
 }
+
+func TestDelete(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+	svc := New(st, &fakeEmbedder{vec: []float32{1}})
+
+	res, err := svc.Add(ctx, Input{TenantID: "acme", Content: "会被删除的记忆"})
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if err := svc.Delete(ctx, "acme", res.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	m, err := st.Get(ctx, "acme", res.ID)
+	if err != nil {
+		t.Fatalf("get after delete: %v", err)
+	}
+	if m.Status != types.StatusDeleted {
+		t.Fatalf("status = %s, want deleted", m.Status)
+	}
+
+	// 已删除再删：幂等成功（客户端可安全重试）
+	if err := svc.Delete(ctx, "acme", res.ID); err != nil {
+		t.Fatalf("second delete should be idempotent: %v", err)
+	}
+
+	if err := svc.Delete(ctx, "other", res.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("cross-tenant delete should be not found, got %v", err)
+	}
+	if err := svc.Delete(ctx, "acme", "  "); !errors.Is(err, store.ErrInvalid) {
+		t.Fatalf("empty id should be invalid, got %v", err)
+	}
+	if err := New(nil, nil).Delete(ctx, "acme", res.ID); !errors.Is(err, store.ErrInvalid) {
+		t.Fatalf("nil store should be invalid, got %v", err)
+	}
+}

@@ -2,28 +2,31 @@
 //
 // 设计约束：
 //   - 只做「中间件」：不抢用户的 harness，通过 MCP 被任何客户端接入。
-//   - 工具名与参数保持稳定，后续 S12 的 memory_* 三件套在此扩展。
+//   - 工具层只做参数转换，业务规则全部留在 memory.Service。
 package mcp
 
 import (
 	"context"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/mahaoboy/memalyze/internal/memory"
 )
 
 // Serve 在 stdio 传输上启动 MCP server，阻塞直到客户端断开。
-func Serve(ctx context.Context, version string) error {
-	return NewServer(version).Run(ctx, &mcpsdk.StdioTransport{})
+func Serve(ctx context.Context, version string, svc *memory.Service, tenant string) error {
+	return NewServer(version, svc, tenant).Run(ctx, &mcpsdk.StdioTransport{})
 }
 
 // NewServer 构建 server 实例并注册全部工具。
-func NewServer(version string) *mcpsdk.Server {
+func NewServer(version string, svc *memory.Service, tenant string) *mcpsdk.Server {
 	server := mcpsdk.NewServer(&mcpsdk.Implementation{
 		Name:    "memalyze",
 		Version: version,
 	}, nil)
 
 	registerEcho(server)
+	registerMemoryTools(server, svc, tenant)
 	return server
 }
 
