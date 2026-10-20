@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // DefaultModel 是默认的本地 embedding 模型（768 维）。
@@ -24,6 +23,7 @@ type Client struct {
 	dim         int
 	docPrefix   string // 写入侧前缀（nomic 需要 "search_document: "）
 	queryPrefix string // 检索侧前缀（nomic 需要 "search_query: "）
+	keepAlive   string // 传给 Ollama 的 keep_alive，避免空闲后重新加载模型
 	http        *http.Client
 }
 
@@ -35,6 +35,14 @@ func WithDim(dim int) Option { return func(c *Client) { c.dim = dim } }
 
 // WithHTTPClient 注入自定义 HTTP 客户端（测试或调优超时用）。
 func WithHTTPClient(h *http.Client) Option { return func(c *Client) { c.http = h } }
+
+// WithKeepAlive 设置 Ollama 的 keep_alive（如 "30m"、"2h"）。
+//
+// 默认 30m：embedding 模型冷加载约 20s，若空闲后立刻卸载，下一次查询会
+// 被 3s 查询超时打成 degraded。传空字符串表示不发送该字段（用 Ollama 默认值）。
+func WithKeepAlive(keepAlive string) Option {
+	return func(c *Client) { c.keepAlive = keepAlive }
+}
 
 // WithPrefixes 设置写入侧 / 检索侧文本前缀。
 //
@@ -51,12 +59,14 @@ func New(baseURL, model string, opts ...Option) *Client {
 		model = DefaultModel
 	}
 	c := &Client{
-		baseURL: baseURL,
-		model:   model,
-		dim:     768,
-		// 超时是硬要求（S7 教训：竞品语义检索能卡 60s）。
-		// 单批 embedding 超 10s 视为不可用，调用方据此降级到关键词检索。
-		http: &http.Client{Timeout: 10 * time.Second},
+		baseURL:   baseURL,
+		model:     model,
+		dim:       768,
+		keepAlive: "30m",
+		// 不在 http.Client 上写死超时：冷加载模型可能超过 10s，真正的
+		// 截止时间由调用方的 context 决定（写入 30s / 检索 3s / warmup 90s）。
+		// 这样 S14 才能既保留 3s 查询预算，又让冷启动 warmup 等到模型加载完。
+		http: &http.Client{},
 	}
 	for _, o := range opts {
 		o(c)
@@ -65,8 +75,9 @@ func New(baseURL, model string, opts ...Option) *Client {
 }
 
 type embedRequest struct {
-	Model string   `json:"model"`
-	Input []string `json:"input"`
+	Model     string   `json:"model"`
+	Input     []string `json:"input"`
+	KeepAlive string   `json:"keep_alive,omitempty"`
 }
 
 type embedResponse struct {
@@ -78,7 +89,7 @@ func (c *Client) Embed(ctx context.Context, texts []string) ([][]float32, error)
 	if len(texts) == 0 {
 		return nil, nil
 	}
-	body, err := json.Marshal(embedRequest{Model: c.model, Input: texts})
+	body, err := json.Marshal(embedRequest{Model: c.model, Input: texts, KeepAlive: c.keepAlive})
 	if err != nil {
 		return nil, fmt.Errorf("ollama: marshal request: %w", err)
 	}

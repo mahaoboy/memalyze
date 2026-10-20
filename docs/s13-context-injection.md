@@ -407,6 +407,11 @@ fallback still returned the right memory. See §8.
 - Statistical significance. 3 trials per variant is directional evidence, not a
   benchmark.
 
+**S14 update:** Cline CLI + DeepSeek (remote model) was run end-to-end with this
+prompt: A session wrote, the process exited, B session auto-called `memory_search`
+and answered from the hit. See [`s14-end-to-end.md`](s14-end-to-end.md). Claude Code
+is still blocked by the login on this machine.
+
 ## 8. S14 risks
 
 1. **Cold-start embedding timeout.** The 3 s hard timeout is correct for latency,
@@ -416,6 +421,9 @@ fallback still returned the right memory. See §8.
    turn. Mitigations to evaluate in S14: warm the embedding model at startup,
    expose `MEMALYZE_QUERY_TIMEOUT`, or keep the first-search degradation visible.
    Do not silently raise the timeout without measuring the user-visible latency.
+   **S14 update:** implemented async warmup + `keep_alive` + configurable
+   `MEMALYZE_QUERY_TIMEOUT`; see [`s14-end-to-end.md`](s14-end-to-end.md). A query
+   that arrives during the warmup window can still degrade.
 2. **Scope guessing.** Small models sometimes pass `scope="default"` and miss
    `project:*` memories. One empty-memory trial did this before the final wording
    was added; after adding “`scope="default"` is a literal scope name, not a

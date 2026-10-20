@@ -358,3 +358,41 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("nil store should be invalid, got %v", err)
 	}
 }
+
+func TestWarmup(t *testing.T) {
+	emb := &fakeEmbedder{vec: []float32{1, 0}}
+	svc := New(nil, emb)
+
+	if err := svc.Warmup(context.Background()); err != nil {
+		t.Fatalf("warmup: %v", err)
+	}
+	if emb.calls != 1 {
+		t.Fatalf("warmup should embed once, got %d calls", emb.calls)
+	}
+
+	// 没有 embedder 时 warmup 是 no-op（纯关键词模式）
+	if err := New(nil, nil).Warmup(context.Background()); err != nil {
+		t.Fatalf("nil embedder warmup should be a no-op: %v", err)
+	}
+}
+
+func TestWarmupFailureIsReturned(t *testing.T) {
+	svc := New(nil, &fakeEmbedder{fail: true})
+	if err := svc.Warmup(context.Background()); err == nil {
+		t.Fatal("warmup should return the embedding error")
+	}
+}
+
+func TestWarmupTimeout(t *testing.T) {
+	emb := &fakeEmbedder{vec: []float32{1}, delay: 300 * time.Millisecond}
+	svc := New(nil, emb, WithWarmupTimeout(20*time.Millisecond))
+
+	start := time.Now()
+	err := svc.Warmup(context.Background())
+	if err == nil {
+		t.Fatal("warmup should time out")
+	}
+	if elapsed := time.Since(start); elapsed > 150*time.Millisecond {
+		t.Fatalf("warmup timeout not enforced, took %v", elapsed)
+	}
+}

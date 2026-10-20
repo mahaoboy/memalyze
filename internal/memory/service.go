@@ -25,6 +25,12 @@ import (
 // 比检索侧（3s）宽松：写入可以等，检索不能卡。
 const DefaultEmbedTimeout = 30 * time.Second
 
+// DefaultWarmupTimeout 是启动 warmup 的超时。
+//
+// 冷加载 qwen3-embedding:0.6b 实测约 20s；给到 90s 是为了慢机器/首次下载后
+// 仍能完成预热，而不是让后台 goroutine 提前放弃。
+const DefaultWarmupTimeout = 90 * time.Second
+
 // Input 是一次写入的入参。
 type Input struct {
 	TenantID string
@@ -52,11 +58,12 @@ type Result struct {
 
 // Service 实现写入规则。
 type Service struct {
-	store        store.Store
-	embedder     embed.Embedder
-	embedTimeout time.Duration
-	queryTimeout time.Duration
-	now          func() time.Time
+	store         store.Store
+	embedder      embed.Embedder
+	embedTimeout  time.Duration
+	queryTimeout  time.Duration
+	warmupTimeout time.Duration
+	now           func() time.Time
 }
 
 // Option 配置 Service。
@@ -80,6 +87,15 @@ func WithQueryTimeout(d time.Duration) Option {
 	}
 }
 
+// WithWarmupTimeout 设置启动 warmup 的超时（默认 90s）。
+func WithWarmupTimeout(d time.Duration) Option {
+	return func(s *Service) {
+		if d > 0 {
+			s.warmupTimeout = d
+		}
+	}
+}
+
 // WithClock 注入时钟（测试用）。
 func WithClock(now func() time.Time) Option {
 	return func(s *Service) {
@@ -92,16 +108,33 @@ func WithClock(now func() time.Time) Option {
 // New 构建 Service。embedder 可以为 nil，表示当前不做向量化（仅关键词检索可用）。
 func New(st store.Store, e embed.Embedder, opts ...Option) *Service {
 	s := &Service{
-		store:        st,
-		embedder:     e,
-		embedTimeout: DefaultEmbedTimeout,
-		queryTimeout: DefaultQueryTimeout,
-		now:          time.Now,
+		store:         st,
+		embedder:      e,
+		embedTimeout:  DefaultEmbedTimeout,
+		queryTimeout:  DefaultQueryTimeout,
+		warmupTimeout: DefaultWarmupTimeout,
+		now:           time.Now,
 	}
 	for _, o := range opts {
 		o(s)
 	}
 	return s
+}
+
+// Warmup 预加载 embedding 模型，不写入任何记忆。
+//
+// 为什么需要：qwen3-embedding:0.6b 冷加载约 20s，而检索侧只有 3s 预算。
+// 服务启动后在后台调用一次，让「空闲后第一次查询」不再被冷加载打成 degraded。
+// 失败不致命（Ollama 可能还没起来），检索仍会按 D-015 降级到关键词。
+func (s *Service) Warmup(ctx context.Context) error {
+	if s.embedder == nil {
+		return nil
+	}
+	wctx, cancel := context.WithTimeout(ctx, s.warmupTimeout)
+	defer cancel()
+
+	_, err := embed.EmbedQuery(wctx, s.embedder, "memalyze warmup")
+	return err
 }
 
 // Add 写入一条记忆。

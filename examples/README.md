@@ -20,3 +20,6 @@ The pattern is always the same:
 
 Full rationale, tested prompt variants, and verification output:
 [`docs/s13-context-injection.md`](../docs/s13-context-injection.md).
+
+End-to-end evidence (Cline CLI + DeepSeek, two processes, cold-start fix):
+[`docs/s14-end-to-end.md`](../docs/s14-end-to-end.md).

@@ -12,7 +12,7 @@ Plug into any harness. Keep every memory. Never leave your infrastructure.
 
 ---
 
-🚧 **早期开发中** — 核心链路已通（存储 / 写入 / 检索 / MCP 三件套 / S13 上下文注入）。下一步：S14 端到端验证。
+🚧 **早期开发中** — 核心链路 + 端到端已通（存储 / 写入 / 检索 / MCP 三件套 / 上下文注入 / 冷启动修复）。下一步：S15 企业治理。
 
 ## 为什么不同
 
@@ -78,8 +78,15 @@ S13 没有新增工具（仍是 4 个，D-011 的上限是 5），也没有 `mem
 | `MEMALYZE_OLLAMA_URL` | `http://127.0.0.1:11434` | 本地 Ollama 地址 |
 | `MEMALYZE_EMBED_MODEL` | `qwen3-embedding:0.6b` | embedding 模型 |
 | `MEMALYZE_TENANT` | `default` | 工具调用的默认租户 |
+| `MEMALYZE_QUERY_TIMEOUT` | `3s` | 检索侧 embedding 超时（慢机器可调大，但别悄悄改） |
+| `MEMALYZE_KEEP_ALIVE` | `30m` | Ollama `keep_alive`，避免空闲后卸载模型 |
 
-Ollama 暂时连不上时服务仍会启动：写入会保留记忆并返回 `embedding_failed=true`，检索会返回 `degraded=true` 并自动降级为纯关键词。
+服务启动后会在后台**预热** embedding 模型（实测 20–40s），并把模型保留
+`MEMALYZE_KEEP_ALIVE` 这么久；MCP 握手不被阻塞。Ollama 暂时连不上时服务仍会启动：
+写入会保留记忆并返回 `embedding_failed=true`，检索会返回 `degraded=true` 并自动降级
+为纯关键词。如果第一次查询正好落在预热窗口内，仍可能 `degraded=true`（关键词兜底
+可用），预热完成后的查询和空闲后的第一次查询都不再冷加载。详见
+[docs/s14-end-to-end.md](docs/s14-end-to-end.md)。
 
 ```bash
 mcporter call --stdio "$(pwd)/memalyze" memory_add content="许可证定为 AGPL-3.0" scope=project:opc
@@ -97,7 +104,8 @@ mcporter call --stdio "$(pwd)/memalyze" memory_search query="许可证"
 - [x] 检索编排（向量优先 / 关键词补位 / 3 秒超时降级）
 - [x] MCP 工具三件套（`memory_add` / `memory_search` / `memory_delete`）
 - [x] 上下文注入（提示词模板 + Claude Code / Cline / 自建 harness 示例 + 跨会话验证）
-- [ ] 端到端验证与真实语料评估（S14）
+- [x] 端到端跑通（Cline + DeepSeek 真模型；异步 warmup + keep_alive；S14）
+- [ ] 企业治理（脱敏 + 审计 + 30 秒 demo，S15）
 
 ## 许可证
 
