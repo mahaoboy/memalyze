@@ -23,6 +23,12 @@ jobs:
         run: go test ./...
       - name: cross-compile
         run: make release
+
+      # 先自证：发布出去的 SHA256SUMS 必须能校验它自己的产物。
+      # v0.1.0 就是漏了这一步，把 SHA256SUMS 自己按空文件哈希了出去。
+      - name: verify checksums before publishing
+        run: ( cd dist && sha256sum -c SHA256SUMS )
+
       - name: publish
         uses: softprops/action-gh-release@v2
         with:
@@ -30,4 +36,10 @@ jobs:
             dist/memalyze-*
             dist/SHA256SUMS
           generate_release_notes: true
-          draft: true
+          # 不再留草稿：发布后立刻用 verify-release.sh 自证，
+          # 需要人工改文案时用 `gh release edit` 补。
+          draft: false
+
+      # 用用户视角再验一遍：下载全部资产、逐个校验、跑 --version 与 demo。
+      - name: verify published assets
+        run: ./scripts/verify-release.sh "$GITHUB_REF_NAME"

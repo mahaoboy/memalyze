@@ -39,6 +39,14 @@ docker-up:
 docker-down:
 	docker compose down
 
+# 把 dsh/agent skill 打成可上传的包（目录提交用）
+.PHONY: skill
+skill:
+	@mkdir -p dist
+	@tar -czf dist/memalyze-skill-$(VERSION).tar.gz -C skills memalyze
+	@tar -tzf dist/memalyze-skill-$(VERSION).tar.gz
+	@ls -lh dist/memalyze-skill-$(VERSION).tar.gz
+
 clean:
 	rm -f $(BIN)
 	rm -rf dist

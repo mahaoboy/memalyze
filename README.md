@@ -231,6 +231,8 @@ CI (no daemon in the dev environment), brute-force vector scan, Chinese-first de
 | [`docs/s13-context-injection.md`](docs/s13-context-injection.md) | the prompt contract that makes models search |
 | [`docs/s14-end-to-end.md`](docs/s14-end-to-end.md) | real harness, two sessions, cold-start numbers |
 | [`docs/s21-distribution.md`](docs/s21-distribution.md) | release artifacts, channels, post-release checklist |
+| [`docs/s21-submissions.md`](docs/s21-submissions.md) | copy-paste entries for MCP directories and ClawHub |
+| [`docs/s23-feedback-log.md`](docs/s23-feedback-log.md) | live feedback log (currently empty, honestly) |
 | [`docs/s24-review.md`](docs/s24-review.md) | the milestone review template (not yet filled) |
 | [`SECURITY.md`](SECURITY.md) | threat model: what is defended, what is out of scope |
 

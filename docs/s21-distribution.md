@@ -15,8 +15,8 @@
 | `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ syntax checked; the `github.com` URL is unreachable from the build host, assets verified via `api.github.com` instead |
 | dsh / agent skill | `skills/memalyze/` | ✅ content complete |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
-| MCP directory listing | pending submission | ❌ |
-| ClawHub listing | pending submission | ❌ |
+| MCP directory listing | copy ready in [`s21-submissions.md`](s21-submissions.md) | ❌ not submitted |
+| ClawHub listing | `make skill` produces the package | ❌ not submitted |
 
 ## 2. Three-step install (the acceptance test)
 
@@ -28,6 +28,18 @@ claude mcp add --scope project memalyze -- memalyze   # 3. wire it up
 
 Anything that adds a fourth step (editing JSON by hand, building from source, starting a
 database) fails this criterion and must be fixed before announcing.
+
+## 2.1 Publishing is automated
+
+Since `06fb2c1` + the workflow update on 2026-10-25, `.github/workflows/release.yml`:
+
+1. runs the full test suite,
+2. cross-compiles and **verifies `SHA256SUMS` against its own artifacts** (the v0.1.0 bug),
+3. publishes a **non-draft** release with auto-generated notes,
+4. re-downloads every asset from the public API and runs `--version` + `demo`
+   (`scripts/verify-release.sh`).
+
+So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. No manual publish click.
 
 ## 3. Versioning
 
