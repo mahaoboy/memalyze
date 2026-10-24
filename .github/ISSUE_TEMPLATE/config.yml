@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report (private)
+    url: https://github.com/mahaoboy/memalyze/security/advisories/new
+    about: Do not open a public issue for vulnerabilities.
+  - name: Governance & deployment docs
+    url: https://github.com/mahaoboy/memalyze/blob/main/docs/s15-redaction-audit.md
+    about: How redaction and audit work, including what they do not cover.

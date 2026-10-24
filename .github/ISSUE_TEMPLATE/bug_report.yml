@@ -1,0 +1,65 @@
+name: Bug report
+description: Something is broken or behaves differently from the docs
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do **not** paste real customer data, memory contents,
+        or tokens. Redact them — `[REDACTED:phone]` style is fine.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Output of `memalyze --version`, or the commit you built from
+      placeholder: "0.0.1-dev / 544957c"
+    validations:
+      required: true
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport
+      options:
+        - stdio (harness spawns memalyze)
+        - Streamable HTTP (docker / remote)
+        - CLI subcommand (audit/memory/redact/demo)
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS and Go version
+      placeholder: "Ubuntu 24.04, go1.25.0"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. `memalyze demo`
+        2. ...
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs (stderr only)
+      description: memalyze never logs to stdout — that channel is the MCP transport.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues
+          required: true
+        - label: I removed tokens, memory contents, and customer data from this report
+          required: true
