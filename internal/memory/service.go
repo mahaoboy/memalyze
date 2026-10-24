@@ -291,7 +291,7 @@ func (s *Service) Delete(ctx context.Context, tenantID, memoryID string) (err er
 // Reembed 重新计算某条记忆的向量（换模型、或上次 embedding 失败时补算）。
 //
 // 与 Add 不同：这是显式操作，失败会返回错误（调用方需要知道没成功）。
-func (s *Service) Reembed(ctx context.Context, tenantID, memoryID string) (Result, error) {
+func (s *Service) Reembed(ctx context.Context, tenantID, memoryID string) (res Result, err error) {
 	if s.store == nil {
 		return Result{}, fmt.Errorf("%w: nil store", store.ErrInvalid)
 	}
@@ -306,7 +306,16 @@ func (s *Service) Reembed(ctx context.Context, tenantID, memoryID string) (Resul
 		return Result{}, fmt.Errorf("%w: memory %s is deleted", store.ErrInvalid, memoryID)
 	}
 
-	res := Result{ID: memoryID}
+	res.ID = memoryID
+	defer func() {
+		s.audit(ctx, store.AuditEntry{
+			TenantID:    tenantID,
+			Action:      store.AuditReembed,
+			MemoryID:    memoryID,
+			ResultCount: resultCount(err == nil),
+			Detail:      errDetail(err),
+		})
+	}()
 	s.embedInto(ctx, memoryID, m.Content, &res)
 	if res.EmbeddingFailed {
 		return res, fmt.Errorf("memory: reembed %s: %s", memoryID, res.EmbeddingErr)

@@ -1,6 +1,7 @@
 package govern
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -203,5 +204,65 @@ func TestDisabledRuleSkipped(t *testing.T) {
 	}
 	if names := r.Names(); len(names) != 1 || names[0] != "on" {
 		t.Fatalf("names = %v", names)
+	}
+}
+
+func TestLoadEmptyPathUsesBuiltins(t *testing.T) {
+	r, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Names()) != len(DefaultRules()) {
+		t.Fatalf("names = %v", r.Names())
+	}
+}
+
+func TestLoadRulesFileFromDisk(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/rules.json"
+	data := `{"rules":[{"name":"order","pattern":"\\bORD-\\d{4}\\b","replacement":"[ORDER]"}]}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, hits := r.Redact("订单 ORD-1234 已创建")
+	if got != "订单 [ORDER] 已创建" {
+		t.Fatalf("got %q", got)
+	}
+	if Total(hits) != 1 || HitNames(hits)[0] != "order" {
+		t.Fatalf("hits = %+v", hits)
+	}
+}
+
+func TestLoadMissingFileFailsClosed(t *testing.T) {
+	if _, err := Load(t.TempDir() + "/nope.json"); err == nil {
+		t.Fatal("expected error for missing rules file")
+	}
+}
+
+func TestLoadInvalidJSONFailsClosed(t *testing.T) {
+	path := t.TempDir() + "/bad.json"
+	if err := os.WriteFile(path, []byte("{oops"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestHitNamesAndTotal(t *testing.T) {
+	hits := []Hit{{Name: "email", Count: 2}, {Name: "phone_cn", Count: 1}}
+	if Total(hits) != 3 {
+		t.Fatalf("Total = %d", Total(hits))
+	}
+	names := HitNames(hits)
+	if len(names) != 2 || names[0] != "email" || names[1] != "phone_cn" {
+		t.Fatalf("HitNames = %v", names)
+	}
+	if Total(nil) != 0 || len(HitNames(nil)) != 0 {
+		t.Fatal("nil hits should be empty")
 	}
 }

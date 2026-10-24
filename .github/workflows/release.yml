@@ -1,0 +1,33 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: test before tagging
+        run: go test ./...
+      - name: cross-compile
+        run: make release
+      - name: publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/memalyze-*
+            dist/SHA256SUMS
+          generate_release_notes: true
+          draft: true

@@ -228,3 +228,41 @@ func TestNoRedactorNoAuditStillWorks(t *testing.T) {
 		t.Fatalf("content changed: %q", m.Content)
 	}
 }
+
+func TestReembedIsAudited(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+	auditor := st.(store.AuditStore)
+	r, err := govern.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	emb := &fakeEmbedder{vec: []float32{1, 0, 0}}
+	svc := New(st, emb,
+		WithRedactor(r, govern.ModeEnforce),
+		WithAudit(auditor, "tester", false),
+		WithLogger(func(string, ...any) {}),
+	)
+
+	added, err := svc.Add(ctx, Input{TenantID: "acme", Content: "记住：周日休息"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Reembed(ctx, "acme", added.ID); err != nil {
+		t.Fatalf("reembed: %v", err)
+	}
+
+	entries, err := auditor.QueryAudit(ctx, store.AuditFilter{
+		TenantID: "acme",
+		Actions:  []store.AuditAction{store.AuditReembed},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("reembed audit rows = %d", len(entries))
+	}
+	if entries[0].MemoryID != added.ID || entries[0].ResultCount != 1 {
+		t.Fatalf("unexpected reembed audit: %+v", entries[0])
+	}
+}
