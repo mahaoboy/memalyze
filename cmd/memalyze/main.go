@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/mahaoboy/memalyze/internal/config"
@@ -35,6 +36,7 @@ var version = "0.0.1-dev"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
+	httpAddr := flag.String("http", "", `listen on this address with Streamable HTTP, e.g. ":8080" (also MEMALYZE_HTTP_ADDR)`)
 	flag.Usage = usage
 	flag.Parse()
 
@@ -53,6 +55,8 @@ func main() {
 			os.Exit(runRedact(args[1:]))
 		case "demo":
 			os.Exit(runDemo(args[1:]))
+		case "health":
+			os.Exit(runHealth(args[1:]))
 		case "help":
 			usage()
 			return
@@ -63,7 +67,7 @@ func main() {
 		}
 	}
 
-	serve()
+	serve(*httpAddr)
 }
 
 func configTenant() string { return config.Load().Tenant }
@@ -73,6 +77,7 @@ func usage() {
 
 usage:
   memalyze                      run the MCP server on stdio
+  memalyze --http :8080         run the MCP server over Streamable HTTP (needs MEMALYZE_HTTP_TOKEN off-loopback)
   memalyze --version            print version
 
   memalyze audit export [flags] export audit log as CSV or JSON
@@ -93,15 +98,19 @@ usage:
       --rules rules.json        custom rules (default: built-in)
       --mode enforce|dry-run    default: enforce
 
+  memalyze health [--url]      check an HTTP deployment (used by container healthchecks)
   memalyze demo                30-second governance demo (no Ollama needed)
 `)
 }
 
-func serve() {
+func serve(httpFlag string) {
 	// 注意：stdout 是 MCP 协议通道，日志只能走 stderr。
 	fmt.Fprintf(os.Stderr, "memalyze %s — MCP-native, self-hosted memory for AI agents\n", version)
 
 	cfg := config.Load()
+	if strings.TrimSpace(httpFlag) != "" {
+		cfg.HTTPAddr = strings.TrimSpace(httpFlag)
+	}
 	ctx := context.Background()
 
 	st, err := sqlite.Open(ctx, cfg.DBPath)
@@ -137,7 +146,20 @@ func serve() {
 		cfg.DBPath, cfg.Tenant, cfg.EmbedModel, cfg.OllamaURL, cfg.QueryTimeout, cfg.KeepAlive,
 		cfg.RedactMode, cfg.AuditEnabled, cfg.Actor)
 
-	if err := mcp.Serve(ctx, version, svc, cfg.Tenant); err != nil {
+	if cfg.HTTPAddr != "" {
+		fmt.Fprintf(os.Stderr, "memalyze: transport=http addr=%s auth=%v\n",
+			cfg.HTTPAddr, cfg.HTTPToken != "")
+		err = mcp.ServeHTTP(ctx, mcp.HTTPOptions{
+			Addr:    cfg.HTTPAddr,
+			Version: version,
+			Tenant:  cfg.Tenant,
+			Token:   cfg.HTTPToken,
+			Service: svc,
+		})
+	} else {
+		err = mcp.Serve(ctx, version, svc, cfg.Tenant)
+	}
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "memalyze: %v\n", err)
 		os.Exit(1)
 	}

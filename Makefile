@@ -1,0 +1,58 @@
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+BIN     ?= memalyze
+GO      ?= go
+LDFLAGS := -s -w -X main.version=$(VERSION)
+
+.PHONY: all build test vet fmt demo run http docker-build docker-up docker-down clean
+
+all: test build
+
+build:
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/memalyze
+
+test:
+	$(GO) test ./...
+
+vet:
+	$(GO) vet ./...
+
+fmt:
+	gofmt -l -w .
+
+demo:
+	$(GO) run ./cmd/memalyze demo
+
+# MCP over stdio (what a harness spawns)
+run: build
+	./$(BIN)
+
+# MCP over Streamable HTTP (local only; set MEMALYZE_HTTP_TOKEN to expose it)
+http: build
+	MEMALYZE_HTTP_ADDR=$${MEMALYZE_HTTP_ADDR:-127.0.0.1:8080} ./$(BIN)
+
+docker-build:
+	docker build --build-arg VERSION=$(VERSION) -t memalyze:$(VERSION) .
+
+docker-up:
+	docker compose up -d --build
+
+docker-down:
+	docker compose down
+
+clean:
+	rm -f $(BIN)
+	rm -rf dist
+
+# 交叉编译（S21 发布用；CGO 已禁用，所以没有工具链依赖）
+.PHONY: release
+release:
+	@mkdir -p dist
+	@for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do \
+		os=$${target%/*}; arch=$${target#*/}; ext=""; \
+		[ "$$os" = "windows" ] && ext=".exe"; \
+		echo "building $$os/$$arch"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -trimpath -ldflags "$(LDFLAGS)" \
+			-o dist/$(BIN)-$$os-$$arch$$ext ./cmd/memalyze; \
+	done
+	@cd dist && (shasum -a 256 * 2>/dev/null || sha256sum *) > SHA256SUMS
+	@ls -lh dist

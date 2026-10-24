@@ -1,0 +1,68 @@
+# memalyze: self-hosted memory + local embeddings, one command.
+#
+#   printf 'MEMALYZE_HTTP_TOKEN=%s\n' "$(openssl rand -hex 24)" > .env
+#   docker compose up -d
+#   curl -s http://127.0.0.1:8080/healthz
+#
+# 模型下载（约 640MB）由 model-pull 一次性完成；之后完全离线可用。
+
+name: memalyze
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # 一次性任务：把中文 embedding 模型拉进 ollama 卷
+  model-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen3-embedding:0.6b"]
+    restart: "no"
+
+  memalyze:
+    build:
+      context: .
+      args:
+        VERSION: ${MEMALYZE_VERSION:-dev}
+    image: memalyze:${MEMALYZE_VERSION:-dev}
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_started
+    # 默认只对本机开放；要给同事/客户访问，改成 "8080:8080" 并确认 token 足够强。
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      MEMALYZE_DB: /data/memalyze.db
+      MEMALYZE_OLLAMA_URL: http://ollama:11434
+      MEMALYZE_HTTP_ADDR: ":8080"
+      # 没有 token 时 compose 直接报错：不让「裸奔的记忆库」上线。
+      MEMALYZE_HTTP_TOKEN: ${MEMALYZE_HTTP_TOKEN:?set MEMALYZE_HTTP_TOKEN in .env}
+      MEMALYZE_TENANT: ${MEMALYZE_TENANT:-default}
+      MEMALYZE_REDACT_MODE: ${MEMALYZE_REDACT_MODE:-enforce}
+      MEMALYZE_AUDIT: "on"
+      MEMALYZE_ACTOR: ${MEMALYZE_ACTOR:-container}
+    volumes:
+      - memalyze-data:/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/memalyze", "health", "--url", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  ollama:
+  memalyze-data:
