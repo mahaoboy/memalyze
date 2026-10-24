@@ -209,13 +209,27 @@ Honest snapshot — this is an early-stage project, not a 1.0.
 | M0 立项与定位 (S1–S4) | ✅ |
 | M1 备料与技术验证 (S5–S8) | ✅ |
 | M2 核心链路 (S9–S14) | ✅ |
-| M3 打磨与文档 (S15–S19) | 🟡 S15 governance ✅, S16 Docker ✅, S17 docs ✅, S18 tests, S19 examples |
-| M4 发布 (S20–S23) | ⬜ |
+| M3 打磨与文档 (S15–S19) | ✅ S15 governance, S16 Docker, S17 docs, S18 tests+CI, S19 examples |
+| M4 发布 (S20–S23) | 🟡 S20 license/contributing ✅, S21 artifacts ✅, S22 launch copy ✅, **posting pending** |
+| M5 复盘 (S24) | ⬜ needs real users |
 | M5 复盘 (S24) | ⬜ |
 
-Known gaps: no per-user auth, no audit retention, Docker image not yet built in CI,
-brute-force vector scan, Chinese-first defaults (English works, but the tokenizer is tuned
-for CJK).
+Known gaps: no per-user auth, no audit retention, the Docker image has not been built in
+CI (no daemon in the dev environment), brute-force vector scan, Chinese-first defaults
+(English works, but the tokenizer is tuned for CJK).
+
+## Docs
+
+| Doc | What it covers |
+|---|---|
+| [`docs/s15-redaction-audit.md`](docs/s15-redaction-audit.md) | rules, modes, audit schema, demo transcript |
+| [`docs/s16-docker.md`](docs/s16-docker.md) | compose stack, token policy, verification status |
+| [`docs/s8-retrieval-report.md`](docs/s8-retrieval-report.md) | the 11 retrieval approaches and why this one won |
+| [`docs/s13-context-injection.md`](docs/s13-context-injection.md) | the prompt contract that makes models search |
+| [`docs/s14-end-to-end.md`](docs/s14-end-to-end.md) | real harness, two sessions, cold-start numbers |
+| [`docs/s21-distribution.md`](docs/s21-distribution.md) | release artifacts, channels, post-release checklist |
+| [`docs/s24-review.md`](docs/s24-review.md) | the milestone review template (not yet filled) |
+| [`SECURITY.md`](SECURITY.md) | threat model: what is defended, what is out of scope |
 
 ## Non-goals
 
