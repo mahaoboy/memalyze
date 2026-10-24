@@ -1,5 +1,21 @@
 package sqlite
 
+// 迁移按版本递增，每个版本一个语句块；已存在的库从 user_version 继续往上跑。
+//
+// 约定：**只追加，不改历史版本**。改了 v1 的语句会让老库和新库分叉。
+var migrations = []struct {
+	version int
+	stmts   []string
+}{
+	{1, schemaV1},
+	{2, schemaV2},
+}
+
+// latestVersion 是最新 schema 版本，必须等于 migrations 里最大的 version。
+func latestVersion() int {
+	return migrations[len(migrations)-1].version
+}
+
 // schemaV1 是 v1 的完整 DDL，按顺序执行（迁移在一个事务里跑完）。
 //
 // 两个关键点（都来自实测，见 04-技术路线/数据模型 与 检索验证-S8）：
@@ -55,5 +71,37 @@ var schemaV1 = []string{
 	`CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE OF fts_text ON memories BEGIN
 		INSERT INTO memories_fts(memories_fts, rowid, fts_text) VALUES ('delete', old.rowid, old.fts_text);
 		INSERT INTO memories_fts(rowid, fts_text) VALUES (new.rowid, new.fts_text);
+	END`,
+}
+
+// schemaV2 增加审计表（S15）。
+//
+// 设计要点：
+//   - 独立表、不进 FTS、不参与检索：审计是"记录"，不是"记忆"
+//   - 索引只建在时间与租户上，够导出用，不做过早优化
+//   - UPDATE 触发器让 append-only 成为数据库层约束，而不是口头约定
+var schemaV2 = []string{
+	`CREATE TABLE IF NOT EXISTS audit_log (
+		id           TEXT PRIMARY KEY,
+		ts           INTEGER NOT NULL,
+		actor        TEXT,
+		tenant_id    TEXT NOT NULL,
+		scope        TEXT,
+		action       TEXT NOT NULL,
+		memory_id    TEXT,
+		query_hash   TEXT,
+		query_len    INTEGER NOT NULL DEFAULT 0,
+		result_count INTEGER NOT NULL DEFAULT 0,
+		degraded     INTEGER NOT NULL DEFAULT 0,
+		duplicate    INTEGER NOT NULL DEFAULT 0,
+		redacted     INTEGER NOT NULL DEFAULT 0,
+		dry_run      INTEGER NOT NULL DEFAULT 0,
+		detail       TEXT
+	)`,
+	`CREATE INDEX IF NOT EXISTS ix_audit_ts ON audit_log(ts)`,
+	`CREATE INDEX IF NOT EXISTS ix_audit_tenant_ts ON audit_log(tenant_id, ts)`,
+	`CREATE INDEX IF NOT EXISTS ix_audit_memory ON audit_log(memory_id) WHERE memory_id IS NOT NULL`,
+	`CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit_log BEGIN
+		SELECT RAISE(ABORT, 'audit_log is append-only');
 	END`,
 }

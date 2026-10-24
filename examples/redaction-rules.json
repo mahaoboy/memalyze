@@ -1,0 +1,49 @@
+{
+  "rules": [
+    {
+      "name": "private_key_block",
+      "pattern": "-----BEGIN [A-Z ]*PRIVATE KEY-----[\\s\\S]*?-----END [A-Z ]*PRIVATE KEY-----",
+      "replacement": "[REDACTED:private_key]"
+    },
+    {
+      "name": "id_card_cn",
+      "pattern": "\\b[1-9]\\d{5}(?:19|20)\\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\\d|3[01])\\d{3}[\\dXx]\\b",
+      "replacement": "[REDACTED:id_card]"
+    },
+    {
+      "name": "bank_card",
+      "pattern": "\\b(?:62\\d{14,17}|4\\d{15}|5[1-5]\\d{14})\\b",
+      "replacement": "[REDACTED:bank_card]"
+    },
+    {
+      "name": "jwt",
+      "pattern": "\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\b",
+      "replacement": "[REDACTED:jwt]"
+    },
+    {
+      "name": "api_key_known_prefix",
+      "pattern": "\\b(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,})\\b",
+      "replacement": "[REDACTED:api_key]"
+    },
+    {
+      "name": "credential_assignment",
+      "pattern": "(?i)\\b(api[_-]?key|access[_-]?token|refresh[_-]?token|secret[_-]?key|password|passwd)\\b\\s*[:=]\\s*[\"']?[^\\s\"',;]{6,}[\"']?",
+      "replacement": "$1=[REDACTED:credential]"
+    },
+    {
+      "name": "email",
+      "pattern": "[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}",
+      "replacement": "[REDACTED:email]"
+    },
+    {
+      "name": "phone_cn",
+      "pattern": "(?:\\+?86[-\\s]?)?\\b1[3-9]\\d{9}\\b",
+      "replacement": "[REDACTED:phone]"
+    },
+    {
+      "name": "employee_id_example",
+      "pattern": "\\bEMP-\\d{6}\\b",
+      "replacement": "[REDACTED:employee_id]"
+    }
+  ]
+}

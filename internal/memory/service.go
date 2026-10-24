@@ -10,12 +10,16 @@ package memory
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/mahaoboy/memalyze/internal/embed"
+	"github.com/mahaoboy/memalyze/internal/govern"
 	"github.com/mahaoboy/memalyze/internal/store"
 	"github.com/mahaoboy/memalyze/pkg/types"
 )
@@ -54,6 +58,13 @@ type Result struct {
 	EmbeddingFailed bool
 	// EmbeddingErr 是失败原因的文本（只用于日志/排查，不做判断依据）。
 	EmbeddingErr string
+	// Redacted 表示本次写入命中了脱敏规则（内容可能已被改写）。
+	Redacted bool
+	// RedactionCount 是命中次数；Redactions 是命中的规则名（不含原文）。
+	RedactionCount int
+	Redactions     []string
+	// DryRun 表示只统计未改写（dry-run 模式）。
+	DryRun bool
 }
 
 // Service 实现写入规则。
@@ -64,6 +75,13 @@ type Service struct {
 	queryTimeout  time.Duration
 	warmupTimeout time.Duration
 	now           func() time.Time
+
+	redactor        *govern.Redactor
+	redactMode      govern.Mode
+	auditor         store.AuditStore
+	actor           string
+	auditQueryPlain bool
+	logf            func(format string, args ...any)
 }
 
 // Option 配置 Service。
@@ -105,6 +123,32 @@ func WithClock(now func() time.Time) Option {
 	}
 }
 
+// WithRedactor 打开写入前脱敏。mode 决定"真的改"还是"只统计"。
+func WithRedactor(r *govern.Redactor, mode govern.Mode) Option {
+	return func(s *Service) {
+		s.redactor = r
+		s.redactMode = mode
+	}
+}
+
+// WithAudit 打开审计。actor 会写进每条记录；plainQuery=true 时检索原文进 Detail（默认只存 hash）。
+func WithAudit(a store.AuditStore, actor string, plainQuery bool) Option {
+	return func(s *Service) {
+		s.auditor = a
+		s.actor = actor
+		s.auditQueryPlain = plainQuery
+	}
+}
+
+// WithLogger 注入日志函数（默认写 stderr；stdout 是 MCP 协议通道，不能用）。
+func WithLogger(f func(format string, args ...any)) Option {
+	return func(s *Service) {
+		if f != nil {
+			s.logf = f
+		}
+	}
+}
+
 // New 构建 Service。embedder 可以为 nil，表示当前不做向量化（仅关键词检索可用）。
 func New(st store.Store, e embed.Embedder, opts ...Option) *Service {
 	s := &Service{
@@ -114,6 +158,10 @@ func New(st store.Store, e embed.Embedder, opts ...Option) *Service {
 		queryTimeout:  DefaultQueryTimeout,
 		warmupTimeout: DefaultWarmupTimeout,
 		now:           time.Now,
+		redactMode:    govern.ModeOff,
+		logf: func(format string, args ...any) {
+			fmt.Fprintf(os.Stderr, format+"\n", args...)
+		},
 	}
 	for _, o := range opts {
 		o(s)
@@ -144,13 +192,28 @@ func (s *Service) Warmup(ctx context.Context) error {
 //   - 已存在相同内容 → 返回已有 ID 且 Duplicate=true（不是错误）
 //   - embedding 失败 → 记忆保留，EmbeddingFailed=true，**不返回错误**
 //   - 其余存储错误 → 原样返回
-func (s *Service) Add(ctx context.Context, in Input) (Result, error) {
+func (s *Service) Add(ctx context.Context, in Input) (res Result, err error) {
 	if s.store == nil {
 		return Result{}, fmt.Errorf("%w: nil store", store.ErrInvalid)
 	}
 	content := strings.TrimSpace(in.Content)
 	if content == "" {
 		return Result{}, fmt.Errorf("%w: empty content", store.ErrInvalid)
+	}
+
+	// 脱敏必须在去重与 embedding 之前（S15 验收第 1 条）：
+	// 一旦原文进了 content_hash / fts_text / 向量，就再也擦不干净了。
+	if s.redactor != nil && s.redactMode != govern.ModeOff {
+		redacted, hits := s.redactor.Redact(content)
+		if len(hits) > 0 {
+			res.Redacted = true
+			res.RedactionCount = govern.Total(hits)
+			res.Redactions = govern.HitNames(hits)
+			res.DryRun = s.redactMode == govern.ModeDryRun
+			if s.redactMode == govern.ModeEnforce {
+				content = redacted
+			}
+		}
 	}
 
 	m := &types.Memory{
@@ -166,11 +229,26 @@ func (s *Service) Add(ctx context.Context, in Input) (Result, error) {
 		m.ExpiresAt = &exp
 	}
 
+	defer func() {
+		s.audit(ctx, store.AuditEntry{
+			TenantID:    in.TenantID,
+			Scope:       in.Scope,
+			Action:      store.AuditAdd,
+			MemoryID:    res.ID,
+			ResultCount: resultCount(res.ID != ""),
+			Duplicate:   res.Duplicate,
+			Redacted:    res.RedactionCount,
+			DryRun:      res.DryRun,
+			Detail:      errDetail(err),
+		})
+	}()
+
 	id, err := s.store.Add(ctx, m)
-	res := Result{ID: id}
+	res.ID = id
 	switch {
 	case errors.Is(err, store.ErrDuplicate):
 		res.Duplicate = true
+		err = nil
 		return res, nil // 已有同内容记忆：不重复向量化
 	case err != nil:
 		return Result{}, err
@@ -186,7 +264,7 @@ func (s *Service) Add(ctx context.Context, in Input) (Result, error) {
 //   - 不存在（或不属于该租户）→ store.ErrNotFound，不伪装成功
 //   - 已删除 → 幂等成功（便于客户端重试）
 //   - 空 tenant / id → ErrInvalid
-func (s *Service) Delete(ctx context.Context, tenantID, memoryID string) error {
+func (s *Service) Delete(ctx context.Context, tenantID, memoryID string) (err error) {
 	if s.store == nil {
 		return fmt.Errorf("%w: nil store", store.ErrInvalid)
 	}
@@ -198,6 +276,15 @@ func (s *Service) Delete(ctx context.Context, tenantID, memoryID string) error {
 	if memoryID == "" {
 		return fmt.Errorf("%w: memory id required", store.ErrInvalid)
 	}
+	defer func() {
+		s.audit(ctx, store.AuditEntry{
+			TenantID:    tenantID,
+			Action:      store.AuditDelete,
+			MemoryID:    memoryID,
+			ResultCount: resultCount(err == nil),
+			Detail:      errDetail(err),
+		})
+	}()
 	return s.store.SoftDelete(ctx, tenantID, memoryID)
 }
 
@@ -252,4 +339,91 @@ func (s *Service) embedInto(ctx context.Context, memoryID, content string, res *
 		return
 	}
 	res.Embedded = true
+}
+
+// ---- 审计辅助 ----
+
+// auditTimeout 是审计写入的上限：审计失败不能拖慢主流程，也不能因为
+// 调用方 ctx 已超时就把证据丢掉（所以用 WithoutCancel 另起一个短超时）。
+const auditTimeout = 2 * time.Second
+
+func (s *Service) audit(ctx context.Context, e store.AuditEntry) {
+	if s.auditor == nil {
+		return
+	}
+	if e.Action == "" || !e.Action.Valid() {
+		s.logf("memalyze: skip audit with invalid action %q", e.Action)
+		return
+	}
+	if e.Actor == "" {
+		e.Actor = s.actor
+	}
+	if e.TenantID == "" {
+		s.logf("memalyze: skip audit with empty tenant (action=%s)", e.Action)
+		return
+	}
+	if e.Time.IsZero() {
+		e.Time = s.now()
+	}
+	actx, cancel := context.WithTimeout(context.WithoutCancel(ctx), auditTimeout)
+	defer cancel()
+	if err := s.auditor.AppendAudit(actx, e); err != nil {
+		s.logf("memalyze: audit append failed (action=%s): %v", e.Action, err)
+	}
+}
+
+// auditSearch 记录一次检索。原文默认不入库，只存 SHA-256 + 长度。
+func (s *Service) auditSearch(ctx context.Context, q types.SearchQuery, res SearchResult, err error) {
+	e := store.AuditEntry{
+		TenantID:    q.TenantID,
+		Scope:       q.Scope,
+		Action:      store.AuditSearch,
+		ResultCount: len(res.Hits),
+		Degraded:    res.Degraded,
+		Detail:      errDetail(err),
+	}
+	hash, n := fingerprint(q.Query)
+	e.QueryHash, e.QueryLen = hash, n
+	if q.Query == "" {
+		e.Detail = appendDetail(e.Detail, "list=recent")
+	}
+	if s.auditQueryPlain && q.Query != "" {
+		e.Detail = appendDetail(e.Detail, "query="+q.Query)
+	}
+	if res.Degraded {
+		e.Detail = appendDetail(e.Detail, "degrade="+res.DegradeReason)
+	}
+	s.audit(ctx, e)
+}
+
+func fingerprint(q string) (string, int) {
+	if q == "" {
+		return "", 0
+	}
+	sum := sha256.Sum256([]byte(q))
+	return hex.EncodeToString(sum[:]), len(q)
+}
+
+func errDetail(err error) string {
+	if err == nil {
+		return ""
+	}
+	return "error=" + err.Error()
+}
+
+func appendDetail(detail, add string) string {
+	if add == "" {
+		return detail
+	}
+	if detail == "" {
+		return add
+	}
+	return detail + "; " + add
+}
+
+func resultCount(ok bool) int {
+	if ok {
+		return 1
+	}
+	return 0
 }

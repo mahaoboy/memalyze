@@ -46,7 +46,10 @@ type SearchResult struct {
 //   - 向量路不可用（无 embedder / 超时 / 报错）→ Degraded=true，只返回关键词结果
 //
 // Query 为空时走 Recent（列表语义），不涉及向量，不标记降级。
-func (s *Service) Search(ctx context.Context, q types.SearchQuery) (SearchResult, error) {
+func (s *Service) Search(ctx context.Context, q types.SearchQuery) (res SearchResult, err error) {
+	// 每次检索都留痕（含失败）：这是"谁在何时读了哪条记忆"的唯一来源。
+	defer func() { s.auditSearch(ctx, q, res, err) }()
+
 	if s.store == nil {
 		return SearchResult{}, fmt.Errorf("%w: nil store", store.ErrInvalid)
 	}
@@ -54,8 +57,8 @@ func (s *Service) Search(ctx context.Context, q types.SearchQuery) (SearchResult
 		return SearchResult{}, fmt.Errorf("%w: tenant_id required", store.ErrInvalid)
 	}
 	if strings.TrimSpace(q.Query) == "" {
-		hits, err := s.store.Recent(ctx, q)
-		return SearchResult{Hits: hits}, err
+		res.Hits, err = s.store.Recent(ctx, q)
+		return res, err
 	}
 
 	limit := q.Limit
@@ -63,7 +66,6 @@ func (s *Service) Search(ctx context.Context, q types.SearchQuery) (SearchResult
 		limit = 10
 	}
 
-	res := SearchResult{}
 	var vectorHits []types.SearchHit
 
 	vectorErr := s.vectorSearch(ctx, q, &vectorHits)
@@ -80,7 +82,7 @@ func (s *Service) Search(ctx context.Context, q types.SearchQuery) (SearchResult
 			vectorHits = mergeHits(vectorHits, keywordHits, limit)
 		case len(vectorHits) == 0:
 			// 两路都挂了才把错误抛出去（向量有结果时不影响使用）
-			return SearchResult{}, kwErr
+			return res, kwErr
 		}
 	}
 

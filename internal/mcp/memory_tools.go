@@ -40,11 +40,14 @@ type memoryAddArgs struct {
 }
 
 type memoryAddOutput struct {
-	ID              string `json:"id" jsonschema:"the id of the stored (or already existing) memory"`
-	Duplicate       bool   `json:"duplicate" jsonschema:"true when identical content already exists in the same tenant/scope; no new record was written"`
-	Embedded        bool   `json:"embedded" jsonschema:"true when a vector was written for this memory"`
-	EmbeddingFailed bool   `json:"embedding_failed" jsonschema:"true when the memory was saved but vectorization failed; keyword search still works"`
-	EmbeddingError  string `json:"embedding_error,omitempty" jsonschema:"the vectorization error, present only when embedding_failed is true"`
+	ID              string   `json:"id" jsonschema:"the id of the stored (or already existing) memory"`
+	Duplicate       bool     `json:"duplicate" jsonschema:"true when identical content already exists in the same tenant/scope; no new record was written"`
+	Embedded        bool     `json:"embedded" jsonschema:"true when a vector was written for this memory"`
+	EmbeddingFailed bool     `json:"embedding_failed" jsonschema:"true when the memory was saved but vectorization failed; keyword search still works"`
+	EmbeddingError  string   `json:"embedding_error,omitempty" jsonschema:"the vectorization error, present only when embedding_failed is true"`
+	Redacted        bool     `json:"redacted" jsonschema:"true when the content hit redaction rules before being stored"`
+	Redactions      []string `json:"redactions" jsonschema:"names of the redaction rules that matched; never contains the original text"`
+	DryRun          bool     `json:"dry_run" jsonschema:"true when redaction ran in dry-run mode and the content was stored unchanged"`
 }
 
 func (t *memoryTools) add(ctx context.Context, args memoryAddArgs) (memoryAddOutput, error) {
@@ -62,12 +65,19 @@ func (t *memoryTools) add(ctx context.Context, args memoryAddArgs) (memoryAddOut
 	if err != nil {
 		return memoryAddOutput{}, err
 	}
+	redactions := append([]string(nil), res.Redactions...)
+	if redactions == nil {
+		redactions = []string{}
+	}
 	return memoryAddOutput{
 		ID:              res.ID,
 		Duplicate:       res.Duplicate,
 		Embedded:        res.Embedded,
 		EmbeddingFailed: res.EmbeddingFailed,
 		EmbeddingError:  res.EmbeddingErr,
+		Redacted:        res.Redacted,
+		Redactions:      redactions,
+		DryRun:          res.DryRun,
 	}, nil
 }
 

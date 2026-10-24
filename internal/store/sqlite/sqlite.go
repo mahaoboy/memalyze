@@ -26,8 +26,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// schemaVersion 记在 PRAGMA user_version 里，迁移时按版本递增。
-const schemaVersion = 1
+// schemaVersion 记在 PRAGMA user_version 里，迁移时按版本递增（见 schema.go 的 migrations）。
+func schemaVersion() int { return latestVersion() }
 
 // Store 实现 store.Store。
 type Store struct {
@@ -75,30 +75,40 @@ func (s *Store) migrate(ctx context.Context) error {
 	if err := s.db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return fmt.Errorf("sqlite: read user_version: %w", err)
 	}
-	if version > schemaVersion {
-		return fmt.Errorf("sqlite: database schema v%d is newer than supported v%d", version, schemaVersion)
+	latest := schemaVersion()
+	if version > latest {
+		return fmt.Errorf("sqlite: database schema v%d is newer than supported v%d", version, latest)
 	}
-	if version == schemaVersion {
-		return nil
+	// 逐个版本往上跑：老库（v1）会自动补 audit_log（v2），不需要重建。
+	for _, m := range migrations {
+		if m.version <= version {
+			continue
+		}
+		if err := s.applyMigration(ctx, m.version, m.stmts); err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
+func (s *Store) applyMigration(ctx context.Context, version int, stmts []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("sqlite: begin migration: %w", err)
+		return fmt.Errorf("sqlite: begin migration v%d: %w", version, err)
 	}
 	defer tx.Rollback()
 
-	for _, stmt := range schemaV1 {
+	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("sqlite: migrate: %w", err)
+			return fmt.Errorf("sqlite: migrate v%d: %w", version, err)
 		}
 	}
-	// PRAGMA 不支持占位符，这里版本号是常量，拼接安全。
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
-		return fmt.Errorf("sqlite: set user_version: %w", err)
+	// PRAGMA 不支持占位符；version 来自常量表，拼接安全。
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
+		return fmt.Errorf("sqlite: set user_version %d: %w", version, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("sqlite: commit migration: %w", err)
+		return fmt.Errorf("sqlite: commit migration v%d: %w", version, err)
 	}
 	return nil
 }
