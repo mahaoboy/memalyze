@@ -9,6 +9,9 @@ Redaction happens **before** anything is written; every read is **audited**.
 ./memalyze          # MCP over stdio, for Claude Code / Cline / any harness
 ```
 
+[**v0.1.0 is out**](https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0) — static
+binaries for linux/darwin/windows, checksums published alongside.
+
 ![memalyze governance demo](docs/assets/demo.png)
 
 ---
@@ -210,7 +213,7 @@ Honest snapshot — this is an early-stage project, not a 1.0.
 | M1 备料与技术验证 (S5–S8) | ✅ |
 | M2 核心链路 (S9–S14) | ✅ |
 | M3 打磨与文档 (S15–S19) | ✅ S15 governance, S16 Docker, S17 docs, S18 tests+CI, S19 examples |
-| M4 发布 (S20–S23) | 🟡 S20 license/contributing ✅, S21 artifacts ✅, S22 launch copy ✅, **posting pending** |
+| M4 发布 (S20–S23) | 🟡 S20 ✅, S21 ✅ (**v0.1.0 public**), S22 GitHub ✅ / HN·Reddit·V2EX pending, S23 ⬜ |
 | M5 复盘 (S24) | ⬜ needs real users |
 | M5 复盘 (S24) | ⬜ |
 

@@ -1,6 +1,6 @@
 # S21 — Packaging and distribution
 
-- **Status**: artifacts ready (2026-10-25); external uploads pending (see §5)
+- **Status**: **v0.1.0 published** (2026-10-25); directory submissions still pending (see §5)
 - **Milestone**: M4 / S21
 - **Acceptance**: a stranger can get from zero to a working MCP server in three steps;
   the project is discoverable in at least one directory.
@@ -11,8 +11,8 @@
 |---|---|---|
 | 5 static binaries (linux/darwin amd64+arm64, windows amd64) | `make release` | ✅ built locally, 13–14 MB each |
 | `SHA256SUMS` | `make release` | ✅ |
-| GitHub Release (draft) with notes | `.github/workflows/release.yml` on `v*` tag | ⚠️ workflow not yet run |
-| `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ✅ syntax checked; end-to-end needs a published release |
+| GitHub Release with notes | `.github/workflows/release.yml` on `v*` tag | ✅ **published**, 6 assets, checksums verified |
+| `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ syntax checked; the `github.com` URL is unreachable from the build host, assets verified via `api.github.com` instead |
 | dsh / agent skill | `skills/memalyze/` | ✅ content complete |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
 | MCP directory listing | pending submission | ❌ |
@@ -54,9 +54,19 @@ database) fails this criterion and must be fixed before announcing.
 | Item | Blocker | Unblock |
 |---|---|---|
 | Docker image build | no Docker daemon in the dev environment (B5) | `sudo systemctl start docker`, then `make docker-build` |
-| GitHub Release | needs a pushed tag and CI minutes | `git tag v0.1.0 && git push origin v0.1.0` |
-| installer end-to-end | needs a published release with `SHA256SUMS` | same tag |
+| ~~GitHub Release~~ | done: `v0.1.0` published 2026-10-24T18:10Z | — |
+| installer end-to-end on this host | `github.com` main site is unreachable here (DNS/TCP timeout); `api.github.com` and the asset host work | run it from a normal network, or use `gh release download` |
 | directory submissions | external review, account-bound | manual, one evening |
+
+## 5.1 What publishing actually caught
+
+The first publish exposed a real bug in `make release`: `(shasum -a 256 * …) > SHA256SUMS`
+creates `SHA256SUMS` before the glob expands, so the file hashed **itself as an empty file**.
+Every downloader's `sha256sum -c` would fail on that one line.
+
+Fixed in `06fb2c1` (hash only `memalyze-*`), the published asset was recomputed from the
+already-uploaded binaries and replaced, and `scripts/verify-release.sh` now re-downloads all
+six assets, checks every checksum, runs `--version` and `demo` before reporting PASS.
 
 ## 6. Post-release checklist (first 72 hours)
 
