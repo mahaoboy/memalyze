@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="430" viewBox="0 0 760 430" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+<rect width="760" height="430" rx="10" fill="#0d1117"/>
+<rect width="760" height="30" rx="10" fill="#161b22"/>
+<circle cx="20" cy="15" r="5" fill="#ff5f56"/><circle cx="38" cy="15" r="5" fill="#ffbd2e"/><circle cx="56" cy="15" r="5" fill="#27c93f"/>
+<text x="76" y="19" fill="#8b949e" font-size="12">memalyze — enterprise governance demo</text>
+<text x="24" y="70" fill="#7ee787" font-size="13.5" xml:space="preserve">$ ./examples/demo/demo.sh</text>
+<text x="24" y="114" fill="#e6edf3" font-size="13.5" xml:space="preserve">[1] 写入两条记忆（第一条含手机号、邮箱、身份证号）</text>
+<text x="24" y="136" fill="#e6edf3" font-size="13.5" xml:space="preserve">    敏感样本: redacted=true hits=3 rules=[email id_card_cn phone_cn]</text>
+<text x="24" y="180" fill="#e6edf3" font-size="13.5" xml:space="preserve">[2] 数据库里真正存的是什么（原文不该出现）</text>
+<text x="24" y="202" fill="#e6edf3" font-size="13.5" xml:space="preserve">    content = 客户张伟的手机是 [REDACTED:phone]，</text>
+<text x="24" y="224" fill="#e6edf3" font-size="13.5" xml:space="preserve">              邮箱 [REDACTED:email]，身份证 [REDACTED:id_card]</text>
+<text x="24" y="246" fill="#7ee787" font-size="13.5" xml:space="preserve">    ✔ 手机号 / 邮箱 / 身份证号 均未落库</text>
+<text x="24" y="290" fill="#e6edf3" font-size="13.5" xml:space="preserve">[3] 拿原始手机号检索（应 0 命中）</text>
+<text x="24" y="312" fill="#7ee787" font-size="13.5" xml:space="preserve">    hits = 0   ✔ 库里没有可反查原始号码的索引</text>
+<text x="24" y="356" fill="#e6edf3" font-size="13.5" xml:space="preserve">[5] 审计导出（谁能读、读过什么）</text>
+<text x="24" y="378" fill="#8b949e" font-size="13.5" xml:space="preserve">time,id,action,actor,tenant_id,scope,query_hash,result_count,degraded</text>
+<text x="24" y="400" fill="#8b949e" font-size="13.5" xml:space="preserve">…,add,demo,acme,crm,,1,false</text>
+<text x="24" y="422" fill="#8b949e" font-size="13.5" xml:space="preserve">…,search,demo,acme,,ad4af312…,1,true</text>
+</svg>
