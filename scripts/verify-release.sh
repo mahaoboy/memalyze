@@ -44,7 +44,10 @@ done < "$tmp/urls.txt"
 
 echo "== checksums =="
 if [ -f "$tmp/SHA256SUMS" ]; then
-  ( cd "$tmp" && sha256sum -c SHA256SUMS )
+  # 老版本的 make release 会把 SHA256SUMS 自己也算进去（空文件哈希），
+  # 这里忽略自引用行，只校验真实资产。
+  grep -vE "[ *]SHA256SUMS$" "$tmp/SHA256SUMS" > "$tmp/SHA256SUMS.filtered" || true
+  ( cd "$tmp" && sha256sum -c SHA256SUMS.filtered )
 else
   echo "FAIL: SHA256SUMS missing" >&2
   exit 1

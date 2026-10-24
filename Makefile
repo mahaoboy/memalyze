@@ -54,5 +54,5 @@ release:
 		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -trimpath -ldflags "$(LDFLAGS)" \
 			-o dist/$(BIN)-$$os-$$arch$$ext ./cmd/memalyze; \
 	done
-	@cd dist && (shasum -a 256 * 2>/dev/null || sha256sum *) > SHA256SUMS
+	@cd dist && (shasum -a 256 memalyze-* 2>/dev/null || sha256sum memalyze-*) > SHA256SUMS
 	@ls -lh dist
