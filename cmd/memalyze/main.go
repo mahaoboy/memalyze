@@ -57,6 +57,8 @@ func main() {
 			os.Exit(runDemo(args[1:]))
 		case "health":
 			os.Exit(runHealth(args[1:]))
+		case "backup":
+			os.Exit(runBackup(args[1:]))
 		case "help":
 			usage()
 			return
@@ -99,6 +101,7 @@ usage:
       --mode enforce|dry-run    default: enforce
 
   memalyze health [--url]      check an HTTP deployment (used by container healthchecks)
+  memalyze backup --out f.db   consistent snapshot via VACUUM INTO (safe with WAL)
   memalyze demo                30-second governance demo (no Ollama needed)
 `)
 }

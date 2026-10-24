@@ -183,6 +183,20 @@ internal/memory  redact → dedup → store → embed; search: vector → keywor
   memories, and the honest limit of a single-binary design).
 - Schema migrations are versioned via `PRAGMA user_version` (v1 → v2 adds the audit table).
 
+## Operations
+
+```bash
+memalyze audit export --from 2026-10-01 --format csv --out audit.csv   # who read what
+memalyze backup --out /var/backups/memalyze-$(date +%F).db             # consistent snapshot
+memalyze health --url http://127.0.0.1:8080/healthz                    # probe
+```
+
+- **systemd**: [`deploy/systemd/memalyze.service`](deploy/systemd/memalyze.service) +
+  [`docs/s16-systemd.md`](docs/s16-systemd.md) (hardened unit, env file, backup timer).
+- **Docker**: [`docs/s16-docker.md`](docs/s16-docker.md).
+- `backup` uses `VACUUM INTO`, so snapshots are consistent under WAL and include the audit
+  table; it refuses to overwrite an existing file.
+
 ## Configuration
 
 All through environment variables; defaults work out of the box.
@@ -227,6 +241,7 @@ CI (no daemon in the dev environment), brute-force vector scan, Chinese-first de
 |---|---|
 | [`docs/s15-redaction-audit.md`](docs/s15-redaction-audit.md) | rules, modes, audit schema, demo transcript |
 | [`docs/s16-docker.md`](docs/s16-docker.md) | compose stack, token policy, verification status |
+| [`docs/s16-systemd.md`](docs/s16-systemd.md) | hardened systemd unit, env file, backup/restore |
 | [`docs/s8-retrieval-report.md`](docs/s8-retrieval-report.md) | the 11 retrieval approaches and why this one won |
 | [`docs/s13-context-injection.md`](docs/s13-context-injection.md) | the prompt contract that makes models search |
 | [`docs/s14-end-to-end.md`](docs/s14-end-to-end.md) | real harness, two sessions, cold-start numbers |
