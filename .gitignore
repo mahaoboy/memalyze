@@ -6,3 +6,6 @@ dist/
 .env
 *.local.yaml
 /memalyze
+
+# ledger writeback previews (not part of the product repo)
+.ledger-updates/
