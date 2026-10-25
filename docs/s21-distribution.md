@@ -1,6 +1,6 @@
 # S21 — Packaging and distribution
 
-- **Status**: **v0.1.0 published** (2026-10-25); `.mcpb` bundles **uploaded and digest-verified**; directory submissions still pending (see §5)
+- **Status**: **v0.1.0 published and listed in the official MCP Registry** (2026-10-25); `.mcpb` bundles uploaded and digest-verified; community channels still pending
 - **Milestone**: M4 / S21
 - **Acceptance**: a stranger can get from zero to a working MCP server in three steps;
   the project is discoverable in at least one directory.
@@ -17,7 +17,7 @@
 | `.mcpb` bundles (Claude Desktop / MCPB clients) | `make mcpb` | ✅ 4 platforms **uploaded** to v0.1.0; GitHub asset digests match `server.json` and `MCPB-SHA256SUMS`; binary inside reports `v0.1.0`; not yet opened in Claude Desktop (B8) |
 | `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ valid against the official `2025-12-11` schema; publish blocked on upload + login (B7) |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
-| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ❌ not submitted (B7) |
+| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.1.0`); awesome PR pending |
 | ClawHub listing | `make skill` produces the package | ❌ not submitted |
 
 ## 2. Three-step install (the acceptance test)
@@ -92,7 +92,7 @@ Two rules that came out of the first build:
 | Docker image build | no Docker daemon in the dev environment (B5) | `sudo systemctl start docker`, then `make docker-build` |
 | ~~GitHub Release~~ | done: `v0.1.0` published 2026-10-24T18:10Z | — |
 | ~~`.mcpb` upload~~ | done 2026-10-25: 4 bundles + `MCPB-SHA256SUMS`, digests verified via the API | — |
-| registry publish | `server.json` URLs now resolve; `mcp-publisher login github` needs your account (B7) | `mcp-publisher validate` → `login github` → `publish` |
+| ~~registry publish~~ | done 2026-10-25: `mcp-publisher` accepted all four mcpb packages; public API returns the entry | — |
 | `.mcpb` on a real desktop | no macOS/Windows machine here (B8) | open the bundle in Claude Desktop, run `memory_add`/`memory_search` |
 | installer end-to-end on this host | reachable but slow: 13.7 MB took 76 s (174 KB/s), HEAD requests ~20 s through two redirects | run it from a normal network; for CN users mention the size and the release page (§7) |
 | directory submissions | external review, account-bound | manual, one evening |
@@ -119,7 +119,7 @@ six assets, checks every checksum, runs `--version` and `demo` before reporting 
 - [x] upload the four `.mcpb` bundles; confirm GitHub asset digests match `server.json` (2026-10-25)
 - [ ] open the `.mcpb` in Claude Desktop on macOS and Windows; confirm `memory_add` works and
       the DB lands at `user_config.db_path`
-- [ ] after registry publish, `curl '…/v0/servers?search=memalyze'` returns the entry
+- [x] after registry publish, `curl '…/v0/servers?search=memalyze'` returns the entry (2026-10-25, 4 packages)
 
 ## 7. Slow-network reality (measured 2026-10-25, CN residential line)
 

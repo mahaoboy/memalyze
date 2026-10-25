@@ -70,5 +70,5 @@ Submission fields (adapt to whatever the form asks):
 |---|---|---|---|
 | awesome-mcp-servers | — | — | patch ready (`submissions/awesome-mcp-servers.patch`) |
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
-| MCP registry | — | — | assets uploaded 2026-10-25; metadata ready; remaining = `mcp-publisher login github` + publish |
+| MCP registry | 2026-10-25 | https://registry.modelcontextprotocol.io/v0/servers?search=memalyze | ✅ published `io.github.mahaoboy/memalyze@0.1.0` (4 mcpb packages) |
 | ClawHub | — | — | skill bundle ready |
