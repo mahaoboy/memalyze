@@ -70,5 +70,5 @@ Submission fields (adapt to whatever the form asks):
 |---|---|---|---|
 | awesome-mcp-servers | — | — | patch ready (`submissions/awesome-mcp-servers.patch`) |
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
-| MCP registry | — | — | metadata ready (MCPB route); blocked on `.mcpb` upload + login |
+| MCP registry | — | — | assets uploaded 2026-10-25; metadata ready; remaining = `mcp-publisher login github` + publish |
 | ClawHub | — | — | skill bundle ready |

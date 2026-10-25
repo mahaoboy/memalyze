@@ -7,7 +7,7 @@ Last checked upstream: **2026-10-25**.
 
 | Channel | Artifact | Blocked on |
 |---|---|---|
-| MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | `.mcpb` assets uploaded to the v0.1.0 release; `mcp-publisher login github` |
+| MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | `mcp-publisher login github` only (assets uploaded 2026-10-25) |
 | `punkpeye/awesome-mcp-servers` | [`awesome-mcp-servers.patch`](awesome-mcp-servers.patch) + [PR text](awesome-mcp-servers-pr.md) | your fork + PR |
 | `modelcontextprotocol/servers` | — | **do not submit** (see §3) |
 | ClawHub / dsh skill catalog | `make skill` → `dist/memalyze-skill-<version>.tar.gz` | your account |
@@ -112,7 +112,7 @@ requires Ollama + `qwen3-embedding:0.6b`; homepage the repo.
 
 | Channel | Submitted | Link | Outcome |
 |---|---|---|---|
-| MCP Registry | — | — | blocked on asset upload + login |
+| MCP Registry | — | — | assets uploaded; waiting on login + publish |
 | awesome-mcp-servers | — | — | patch ready |
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
 | ClawHub | — | — | skill bundle ready |

@@ -11,7 +11,7 @@ This file is the raw record. Append only; never rewrite a row.
 | HN Show HN | — | — | ⬜ not posted | — |
 | Reddit r/LocalLLaMA | — | — | ⬜ not posted | — |
 | V2EX 分享创造 | — | — | ⬜ not posted | — |
-| MCP Registry (MCPB) | — | — | 🟡 metadata ready, assets not uploaded | — |
+| MCP Registry (MCPB) | 2026-10-25 | — | 🟡 assets uploaded; not published yet | — |
 | dsh / ClawHub skill | — | — | ⬜ not submitted | — |
 
 ## Baseline (2026-10-25, a few hours after publish, before any announcement)

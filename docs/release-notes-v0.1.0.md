@@ -77,3 +77,23 @@ go test ./...                       # if you build from source
 ```
 
 Full threat model: `SECURITY.md`. Governance design: `docs/s15-redaction-audit.md`.
+
+## Claude Desktop / MCPB bundles
+
+Prebuilt `.mcpb` bundles (one per platform) are attached to this release. Download the one
+matching your machine, open it with Claude Desktop, and it will ask where to keep the SQLite
+file.
+
+| Platform | Asset |
+|---|---|
+| macOS Apple Silicon | `memalyze-0.1.0-darwin-arm64.mcpb` |
+| macOS Intel | `memalyze-0.1.0-darwin-amd64.mcpb` |
+| Windows x64 | `memalyze-0.1.0-windows-amd64.mcpb` |
+| Linux x64 | `memalyze-0.1.0-linux-amd64.mcpb` |
+
+SHA-256 for all four: `MCPB-SHA256SUMS`.
+
+These bundles have **not** been opened in Claude Desktop by the author (no macOS/Windows
+machine available). The binary inside each is the same `v0.1.0` build as the standalone
+assets. If the install sheet does not appear, use the standalone binary and please open an
+issue with the platform and Claude Desktop version.
