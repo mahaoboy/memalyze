@@ -1,6 +1,6 @@
 # S21 — Packaging and distribution
 
-- **Status**: **v0.1.0 published** (2026-10-25); directory submissions still pending (see §5)
+- **Status**: **v0.1.0 published** (2026-10-25); `.mcpb` bundles built and validated, not yet uploaded; directory submissions still pending (see §5)
 - **Milestone**: M4 / S21
 - **Acceptance**: a stranger can get from zero to a working MCP server in three steps;
   the project is discoverable in at least one directory.
@@ -9,13 +9,15 @@
 
 | Artifact | How it is produced | Verified |
 |---|---|---|
-| 5 static binaries (linux/darwin amd64+arm64, windows amd64) | `make release` | ✅ built locally, 13–14 MB each |
+| 5 static binaries (linux/darwin amd64+arm64, windows amd64) | `make release` | ✅ built locally, 13–14 MB each; **rebuilding tag `v0.1.0` reproduces the published SHA-256 exactly** |
 | `SHA256SUMS` | `make release` | ✅ |
 | GitHub Release with notes | `.github/workflows/release.yml` on `v*` tag | ✅ **published**, 6 assets, checksums verified |
-| `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ syntax checked; the `github.com` URL is unreachable from the build host, assets verified via `api.github.com` instead |
+| `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ end-to-end run from this host is slow (13.7 MB in 76 s, 174 KB/s); manual download + `sha256sum -c` verified, see §7 |
 | dsh / agent skill | `skills/memalyze/` | ✅ content complete |
+| `.mcpb` bundles (Claude Desktop / MCPB clients) | `make mcpb` | ✅ 4 platforms, `mcpb validate` + `pack` pass; binary inside reports `v0.1.0`; **not yet uploaded**, not yet opened in Claude Desktop (B8) |
+| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ valid against the official `2025-12-11` schema; publish blocked on upload + login (B7) |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
-| MCP directory listing | copy ready in [`s21-submissions.md`](s21-submissions.md) | ❌ not submitted |
+| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ❌ not submitted (B7) |
 | ClawHub listing | `make skill` produces the package | ❌ not submitted |
 
 ## 2. Three-step install (the acceptance test)
@@ -40,6 +42,26 @@ Since `06fb2c1` + the workflow update on 2026-10-25, `.github/workflows/release.
    (`scripts/verify-release.sh`).
 
 So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. No manual publish click.
+
+## 2.2 MCPB bundles and the registry
+
+`make mcpb` does three things, in this order:
+
+1. cross-compiles the five release binaries (`make release`), writing `dist/VERSION`;
+2. stages one bundle per platform and runs `mcpb validate` + `mcpb pack`
+   (`scripts/build-mcpb.sh`);
+3. derives `fileSha256` for every bundle and rewrites `deploy/registry/server.json`
+   (`scripts/gen-server-json.py`) — hashes are never typed by hand.
+
+Two rules that came out of the first build:
+
+- **Build from the tag, not from `HEAD`.** The first attempt packaged binaries that were
+  four commits past `v0.1.0` (and dirty) under a `0.1.0` label. The script now rejects
+  `git describe` strings like `0.1.0-7-gabc1234-dirty`; check out the tag first.
+- **`mcpb pack` is not byte-reproducible** (timestamps), so `server.json` and
+  `MCPB-SHA256SUMS` must be regenerated after every pack, and the uploaded bytes are the
+  ones that were hashed. The *binaries* inside are reproducible: rebuilding tag `v0.1.0`
+  matched all five published hashes.
 
 ## 3. Versioning
 
@@ -67,7 +89,9 @@ So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. No manual pu
 |---|---|---|
 | Docker image build | no Docker daemon in the dev environment (B5) | `sudo systemctl start docker`, then `make docker-build` |
 | ~~GitHub Release~~ | done: `v0.1.0` published 2026-10-24T18:10Z | — |
-| installer end-to-end on this host | `github.com` main site is unreachable here (DNS/TCP timeout); `api.github.com` and the asset host work | run it from a normal network, or use `gh release download` |
+| `.mcpb` upload + registry publish | assets must exist before `server.json` URLs work; `mcp-publisher login github` needs your account (B7) | `gh release upload ...` then `mcp-publisher publish` (see `submissions/README.md`) |
+| `.mcpb` on a real desktop | no macOS/Windows machine here (B8) | open the bundle in Claude Desktop, run `memory_add`/`memory_search` |
+| installer end-to-end on this host | reachable but slow: 13.7 MB took 76 s (174 KB/s), HEAD requests ~20 s through two redirects | run it from a normal network; for CN users mention the size and the release page (§7) |
 | directory submissions | external review, account-bound | manual, one evening |
 
 ## 5.1 What publishing actually caught
@@ -89,3 +113,19 @@ six assets, checks every checksum, runs `--version` and `demo` before reporting 
 - [ ] `memalyze audit export` on the demo database produces a non-empty CSV
 - [ ] release assets have checksums that match `SHA256SUMS`
 - [ ] watch issues for install failures → they are R1 signals, not noise
+- [ ] open the `.mcpb` in Claude Desktop on macOS and Windows; confirm `memory_add` works and
+      the DB lands at `user_config.db_path`
+- [ ] after registry publish, `curl '…/v0/servers?search=memalyze'` returns the entry
+
+## 7. Slow-network reality (measured 2026-10-25, CN residential line)
+
+| Action | Result |
+|---|---|
+| `HEAD` on the release asset URL | ~20 s (two 302s, ends at `release-assets.githubusercontent.com`) |
+| full 13.7 MB `memalyze-linux-amd64` download | 76 s → **174 KB/s** |
+| `api.github.com` | fast (< 1 s) |
+| `raw.githubusercontent.com`, `cdn.jsdelivr.net` | unreachable from this host |
+
+So `curl \| sh` works but is not instant for users on a similar line. Do not hide it: the
+V2EX draft says the size and points at the release page. A mirror is not set up — do not
+claim one exists.

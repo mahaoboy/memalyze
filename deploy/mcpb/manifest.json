@@ -1,0 +1,62 @@
+{
+  "manifest_version": "0.3",
+  "name": "memalyze",
+  "display_name": "memalyze",
+  "version": "__VERSION__",
+  "description": "Self-hosted agent memory with redaction before write and an append-only audit log.",
+  "long_description": "memalyze is one static binary that speaks MCP over stdio. Memories live in a local SQLite file. Phone numbers, e-mail addresses, national IDs, bank cards and API keys are replaced with stable markers before dedup, full-text indexing and embedding, so the plaintext never reaches the database. Every add, search and delete is appended to an audit table (queries stored as SHA-256 + length) and can be exported as CSV.\n\nEmbeddings run locally through Ollama (qwen3-embedding:0.6b by default). If Ollama is not running, search degrades to keyword mode and reports degraded=true instead of hanging.\n\nNot included: per-user authentication, reversible redaction, an audit UI. Those limits are written down in SECURITY.md.",
+  "author": {
+    "name": "mahaoboy",
+    "url": "https://github.com/mahaoboy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mahaoboy/memalyze"
+  },
+  "homepage": "https://github.com/mahaoboy/memalyze",
+  "documentation": "https://github.com/mahaoboy/memalyze#readme",
+  "support": "https://github.com/mahaoboy/memalyze/issues",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "memory",
+    "agent",
+    "mcp",
+    "self-hosted",
+    "audit",
+    "redaction",
+    "sqlite",
+    "ollama"
+  ],
+  "server": {
+    "type": "binary",
+    "entry_point": "__ENTRY__",
+    "mcp_config": {
+      "command": "${__dirname}/__ENTRY__",
+      "args": [],
+      "env": {
+        "MEMALYZE_DB": "${user_config.db_path}",
+        "MEMALYZE_OLLAMA_URL": "${user_config.ollama_url}"
+      }
+    }
+  },
+  "user_config": {
+    "db_path": {
+      "type": "string",
+      "title": "Database path",
+      "description": "SQLite file for memories and the audit log. Created on first write; keep it on a local disk.",
+      "default": "${__dirname}/memalyze.db"
+    },
+    "ollama_url": {
+      "type": "string",
+      "title": "Ollama URL",
+      "description": "Local Ollama endpoint. If it is unreachable, search still works in keyword mode and says so.",
+      "default": "http://127.0.0.1:11434"
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "__PLATFORM__"
+    ]
+  }
+}

@@ -62,5 +62,18 @@ release:
 		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -trimpath -ldflags "$(LDFLAGS)" \
 			-o dist/$(BIN)-$$os-$$arch$$ext ./cmd/memalyze; \
 	done
-	@cd dist && (shasum -a 256 memalyze-* 2>/dev/null || sha256sum memalyze-*) > SHA256SUMS
+	@cd dist && (shasum -a 256 memalyze-* 2>/dev/null || sha256sum memalyze-*) | grep -v '\.mcpb$$' > SHA256SUMS
+	@echo "$(VERSION)" > dist/VERSION
 	@ls -lh dist
+
+# .mcpb bundles for Claude Desktop / MCPB clients + deploy/registry/server.json.
+# Run on a tagged commit: bundles must contain the same code as the tag they claim.
+.PHONY: mcpb
+mcpb: release
+	VERSION=$$(sed 's/^v//' dist/VERSION) ./scripts/build-mcpb.sh
+	./scripts/gen-server-json.py --version $$(sed 's/^v//' dist/VERSION)
+
+# Pre-upload guard: fails if deploy/registry/server.json no longer matches dist/.
+.PHONY: verify-mcpb
+verify-mcpb:
+	./scripts/gen-server-json.py --version $$(sed 's/^v//' dist/VERSION) --check

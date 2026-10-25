@@ -1,6 +1,7 @@
 # S22 — Launch package
 
 - **Status**: copy ready (2026-10-25); **nothing posted yet** — posting needs your accounts
+- **After posting**: use [`s22-comment-kit.md`](s22-comment-kit.md) (author's first comment, 15 objections, 3-hour runbook, full V2EX draft)
 - **Milestone**: M4 / S22
 - **Acceptance**: GitHub public + ≥3 channels. Only the first is fully under our control.
 

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mahaoboy/memalyze",
+  "title": "memalyze",
+  "description": "Self-hosted agent memory: redaction before write, append-only audit, local embeddings.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/mahaoboy/memalyze",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/mahaoboy/memalyze",
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mahaoboy/memalyze/releases/download/v0.1.0/memalyze-0.1.0-darwin-arm64.mcpb",
+      "fileSha256": "9bd66cbb9f1177eac4597b9d17c01e641e0e365772a09f088ea3362feb7abce8",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mahaoboy/memalyze/releases/download/v0.1.0/memalyze-0.1.0-darwin-amd64.mcpb",
+      "fileSha256": "8597a7ca0b4fe7e46696deee1530ccfe033eb1db45eb56b6cda830fa4fe41461",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mahaoboy/memalyze/releases/download/v0.1.0/memalyze-0.1.0-windows-amd64.mcpb",
+      "fileSha256": "2fccaf5b46d5826a5ff994826aa5b8691e9ffe21f0e5e48dc67b8ab25f5e3d50",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mahaoboy/memalyze/releases/download/v0.1.0/memalyze-0.1.0-linux-amd64.mcpb",
+      "fileSha256": "15709ff4305802974f2a2fde0556d65b1d5f2c55fa448a7cfbe423123060cf62",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
