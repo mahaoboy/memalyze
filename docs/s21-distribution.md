@@ -55,13 +55,15 @@ So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. No manual pu
 
 Two rules that came out of the first build:
 
-- **Build from the tag, not from `HEAD`.** The first attempt packaged binaries that were
+- **Build from a clean tag, not from `HEAD`.** The first attempt packaged binaries that were
   four commits past `v0.1.0` (and dirty) under a `0.1.0` label. The script now rejects
-  `git describe` strings like `0.1.0-7-gabc1234-dirty`; check out the tag first.
+  `git describe` strings like `0.1.0-7-gabc1234-dirty`, and also refuses any binary whose
+  `go version -m` says `vcs.modified=true` — Go stamps VCS state into the binary, so a dirty
+  tree changes the bytes even when `VERSION` is overridden to look clean.
 - **`mcpb pack` is not byte-reproducible** (timestamps), so `server.json` and
   `MCPB-SHA256SUMS` must be regenerated after every pack, and the uploaded bytes are the
-  ones that were hashed. The *binaries* inside are reproducible: rebuilding tag `v0.1.0`
-  matched all five published hashes.
+  ones that were hashed. The *binaries* inside are reproducible: rebuilding tag `v0.1.0` from a clean
+  checkout matched all five published hashes, including VCS stamps.
 
 ## 3. Versioning
 

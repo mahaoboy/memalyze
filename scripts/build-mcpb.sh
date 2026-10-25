@@ -66,6 +66,15 @@ for target in $targets; do
     exit 1
   fi
 
+  # Go stamps VCS state into the binary, so a dirty tree changes the bytes even when
+  # VERSION is overridden to look clean. Refuse to package a binary that cannot be
+  # traced back to a commit.
+  if command -v go >/dev/null 2>&1 && go version -m "$bin" 2>/dev/null | grep -q 'vcs.modified=true'; then
+    echo "error: $bin was built from a dirty tree (vcs.modified=true)" >&2
+    echo "       commit or stash, then rebuild before packaging" >&2
+    exit 1
+  fi
+
   stage="$OUT/mcpb/$os-$arch"
   rm -rf "$stage"
   mkdir -p "$stage/server"
