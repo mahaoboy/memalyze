@@ -76,4 +76,4 @@ mcpb: release
 # Pre-upload guard: fails if deploy/registry/server.json no longer matches dist/.
 .PHONY: verify-mcpb
 verify-mcpb:
-	./scripts/gen-server-json.py --version $$(sed 's/^v//' dist/VERSION) --check
+	./scripts/gen-server-json.py --version $$(python3 -c "import json;print(json.load(open('deploy/registry/server.json'))['version'])") --check
