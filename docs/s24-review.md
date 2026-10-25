@@ -3,7 +3,7 @@
 - **Status**: not started — requires real users (S22 posted, S23 filled)
 - **Milestone**: M5 / S24
 - **Rule**: the review is written from **artifacts**, not from feelings: numbers from this
-  file, quotes from `docs/s23-feedback.md`, commits from `git log`.
+  file, quotes from `docs/s23-feedback-log.md`, commits from `git log`.
 
 ## 1. Scorecard (fill in, do not estimate)
 

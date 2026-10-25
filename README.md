@@ -37,10 +37,15 @@ memalyze is the middleware that fixes those three, and nothing else.
 | Where data lives | vendor cloud | inside the framework | local Markdown | **your server / your laptop** |
 | How to connect | proprietary API | tied to one framework | MCP | **MCP, any harness, stdio or HTTP** |
 | Redaction before write | ❌ | ❌ | ❌ | **✅ 8 rule families, configurable, irreversible by default** |
-| Read audit | partial | ❌ | ❌ | **✅ append-only, per-actor, exportable** |
+| Read audit | partial | ❌ | ❌ | **✅ append-only\*, per-actor, exportable** |
 | Offline | ❌ | partial | ⚠️ model download needed | **✅ local embeddings, no network** |
 | Deployment | SaaS | with the framework | 173 Python packages | **✅ one static binary / one compose file** |
 | Tool surface | — | — | 23 tools | **4 tools** |
+
+\* A database trigger rejects `UPDATE` on `audit_log`; `DELETE` is **not** blocked, so anyone
+with the database file can remove rows. It is append-only at the SQL level, not WORM — export
+to object-lock or syslog storage if deletions are inside your threat model
+([`SECURITY.md`](SECURITY.md)).
 
 Not another mem0, and not Basic Memory either: those are good at *remembering*. memalyze
 assumes remembering is becoming a commodity and competes on **governance, offline

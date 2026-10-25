@@ -113,7 +113,7 @@ Always say: **governance, audit, redaction, offline, single binary, four tools**
 | 4 weeks | **0 real users** | triggers **R1**: rethink positioning, not marketing (see risk register) |
 | 12 weeks | <50 stars and no users | S24 stop-loss: change the wedge, keep the engine |
 
-Track in `docs/s23-feedback.md`, not in memory.
+Track in `docs/s23-feedback-log.md`, not in memory.
 
 ## 9. Posting checklist
 

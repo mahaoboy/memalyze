@@ -78,7 +78,8 @@ silently weakening the default. See D-020.
 
 ## 5. Audit log
 
-Table `audit_log` (schema v2, append-only):
+Table `audit_log` (schema v2; `UPDATE` is rejected by a trigger, `DELETE` is not — see
+`SECURITY.md`, "append-only at the SQL level, not WORM"):
 
 | Column | Meaning |
 |---|---|

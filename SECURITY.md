@@ -46,6 +46,10 @@ advisory unless you prefer otherwise.
   arbitrary vectors; it cannot exfiltrate stored text by itself, but it can poison retrieval.
 - **No encryption at rest.** The SQLite file is as protected as the filesystem it lives on.
   Use full-disk encryption or an encrypted volume.
+- **The audit log is append-only at the SQL level, not WORM.** A trigger rejects `UPDATE`;
+  `DELETE` is not blocked. Anyone with the database file can remove rows. If deletions are
+  in scope, export to storage whose delete permission you do not hold (S3 object lock,
+  syslog) and treat the local table as a buffer.
 - **Audit retention is manual.** There is no purge command yet; export and archive yourself.
 - **Redaction is best-effort pattern matching.** It catches the eight built-in families and
   whatever custom rules you write. It will not catch a name, an address, or a photo of an ID
