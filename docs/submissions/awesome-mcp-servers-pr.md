@@ -38,8 +38,8 @@ memalyze demo   # 30 s, no Ollama and no network needed
 
 Repo: https://github.com/mahaoboy/memalyze
 
-A `.mcpb` bundle for Claude Desktop is attached to the v0.1.0 release for macOS
-(arm64/amd64) and Windows. Limits are written down rather than implied away:
+Prebuilt binaries for Linux, macOS and Windows are on the v0.1.0 release page.
+Limits are written down rather than implied away:
 one token per process (no per-user auth), pattern-based redaction (not a compliance
 certificate), no audit UI — see SECURITY.md.
 

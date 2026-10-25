@@ -21,9 +21,9 @@ Post this as a top-level comment within ~2 minutes of submitting, then edit only
 > deterministic. The tradeoff is that two different phone numbers produce identical text,
 > so the second write is reported as `duplicate` — that is in the tests, not a surprise.
 >
-> **What it catches**: phone (CN), e-mail, national ID (CN), bank card (Luhn-ish pattern),
-> JWT, known API-key prefixes (`sk-`, `ghp_`, …), `password=`-style assignments, PEM private
-> key blocks. **What it does not catch**: names, addresses, free-form secrets with no pattern,
+> **What it catches**: phone (CN), e-mail, national ID (CN), bank card (prefix-based:
+> UnionPay 62, Visa 4, Mastercard 51–55), JWT, known API-key prefixes (`sk-`, `ghp_`, …),
+> `password=`-style assignments, PEM private key blocks. **What it does not catch**: names, addresses, free-form secrets with no pattern,
 > or anything in an image. It is pattern matching, not a compliance certificate; SECURITY.md
 > lists the gaps.
 >
