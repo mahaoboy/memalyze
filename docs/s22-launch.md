@@ -1,6 +1,7 @@
 # S22 — Launch package
 
 - **Status**: copy ready (2026-10-25); **nothing posted yet** — posting needs your accounts
+- **Status 2026-10-25**: GitHub + MCP Registry published; awesome PR #17582 open; community channels not posted.
 - **After posting**: use [`s22-comment-kit.md`](s22-comment-kit.md) (author's first comment, 15 objections, 3-hour runbook, full V2EX draft)
 - **Milestone**: M4 / S22
 - **Acceptance**: GitHub public + ≥3 channels. Only the first is fully under our control.
@@ -117,7 +118,7 @@ Track in `docs/s23-feedback-log.md`, not in memory.
 
 ## 9. Posting checklist
 
-- [ ] tag `v0.1.0`, wait for the release workflow, verify assets + install
+- [x] tag `v0.1.0`, wait for the release workflow, verify assets (install from a clean machine still open)
 - [ ] README's three steps verified on a clean machine
 - [ ] `memalyze demo` output matches `docs/assets/demo.png`
 - [ ] SECURITY.md and CONTRIBUTING.md present (they are what senior readers check first)

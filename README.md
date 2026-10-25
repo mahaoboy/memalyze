@@ -73,11 +73,15 @@ Details and transcripts: [`docs/s15-redaction-audit.md`](docs/s15-redaction-audi
 
 ### 1. Binary + local embedding model
 
+Prebuilt, checksum-verified (Linux/macOS; Windows: take the `.exe` from the release page):
+
 ```bash
-make build
+curl -fsSL https://raw.githubusercontent.com/mahaoboy/memalyze/main/scripts/install.sh | sh
 ollama pull qwen3-embedding:0.6b      # ~640 MB, 1024-dim, strong on Chinese
-./memalyze --version
+memalyze --version
 ```
+
+From source (`Go 1.27+`): `make build`, then `./memalyze --version`.
 
 ### 2. Wire it into a harness
 
@@ -92,7 +96,25 @@ Cline: copy `examples/cline/cline_mcp_settings.json` and `.clinerules`.
 Generic harness: [`examples/custom-harness/`](examples/custom-harness) — one prompt contract
 plus pseudocode. All options: [`examples/README.md`](examples/README.md).
 
-### 3. Or run it in Docker (memalyze + Ollama + model pull)
+### 3. Or one-click in Claude Desktop (MCPB)
+
+Download the bundle for your platform from the
+[v0.1.0 release](https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0) and open it.
+Claude Desktop shows an install sheet and asks where to keep `memalyze.db`.
+
+| Platform | File |
+|---|---|
+| macOS Apple Silicon | `memalyze-0.1.0-darwin-arm64.mcpb` |
+| macOS Intel | `memalyze-0.1.0-darwin-amd64.mcpb` |
+| Windows x64 | `memalyze-0.1.0-windows-amd64.mcpb` |
+| Linux x64 | `memalyze-0.1.0-linux-amd64.mcpb` |
+
+The binary inside is the same `v0.1.0` build as above. These bundles are new and have not
+been opened on a real macOS/Windows desktop yet — if the install sheet does not appear,
+use the plain binary. The server is also listed in the
+[MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=memalyze).
+
+### 4. Or run it in Docker (memalyze + Ollama + model pull)
 
 ```bash
 printf 'MEMALYZE_HTTP_TOKEN=%s\n' "$(openssl rand -hex 24)" > .env

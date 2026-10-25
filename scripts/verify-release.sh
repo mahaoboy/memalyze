@@ -53,6 +53,30 @@ else
   exit 1
 fi
 
+echo "== mcpb bundles =="
+if ls "$tmp"/*.mcpb >/dev/null 2>&1; then
+  if [ ! -f "$tmp/MCPB-SHA256SUMS" ]; then
+    echo "FAIL: mcpb assets exist but MCPB-SHA256SUMS is missing" >&2
+    exit 1
+  fi
+  ( cd "$tmp" && sha256sum -c MCPB-SHA256SUMS )
+  python3 - "$tmp" <<'PY'
+import glob, json, os, sys, zipfile
+
+for path in sorted(glob.glob(os.path.join(sys.argv[1], "*.mcpb"))):
+    with zipfile.ZipFile(path) as z:
+        manifest = json.loads(z.read("manifest.json"))
+        entry = manifest["server"]["entry_point"]
+        if entry not in z.namelist():
+            sys.exit(f"FAIL: {os.path.basename(path)}: entry_point {entry} not in archive")
+        if not z.getinfo(entry).external_attr >> 16 & 0o111:
+            sys.exit(f"FAIL: {os.path.basename(path)}: {entry} is not executable")
+        print(f"  ok {os.path.basename(path):<42} v{manifest['version']} {manifest['compatibility']['platforms']}")
+PY
+else
+  echo "  (no .mcpb assets; skipping)"
+fi
+
 echo "== smoke test (linux-amd64) =="
 if [ -f "$tmp/memalyze-linux-amd64" ]; then
   chmod +x "$tmp/memalyze-linux-amd64"

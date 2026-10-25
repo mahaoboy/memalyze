@@ -8,7 +8,7 @@ Last checked upstream: **2026-10-25**.
 | Channel | Artifact | Blocked on |
 |---|---|---|
 | MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | ✅ published 2026-10-25 (`io.github.mahaoboy/memalyze@0.1.0`) |
-| `punkpeye/awesome-mcp-servers` | [`awesome-mcp-servers.patch`](awesome-mcp-servers.patch) + [PR text](awesome-mcp-servers-pr.md) | your fork + PR |
+| `punkpeye/awesome-mcp-servers` | [`awesome-mcp-servers.patch`](awesome-mcp-servers.patch) + [PR text](awesome-mcp-servers-pr.md) | ✅ PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | `modelcontextprotocol/servers` | — | **do not submit** (see §3) |
 | ClawHub / dsh skill catalog | `make skill` → `dist/memalyze-skill-<version>.tar.gz` | your account |
 
@@ -57,6 +57,14 @@ Facts this file depends on (checked 2026-10-25):
   The `packages` array therefore has four entries. **This shape is untested against the live
   registry**; if publish rejects duplicate `mcpb` entries, keep the `darwin-arm64` one and
   point the others at the release page.
+
+For a **future** release, `server.json` must be generated from the uploaded bytes (packing is
+not byte-reproducible):
+
+```sh
+python3 scripts/gen-server-json.py --from-release v0.1.1
+git commit deploy/registry/server.json -m "chore(registry): v0.1.1"
+```
 
 Verify after publishing:
 
@@ -113,6 +121,6 @@ requires Ollama + `qwen3-embedding:0.6b`; homepage the repo.
 | Channel | Submitted | Link | Outcome |
 |---|---|---|---|
 | MCP Registry | 2026-10-25 | [API entry](https://registry.modelcontextprotocol.io/v0/servers?search=memalyze) | ✅ published, 4 mcpb packages accepted |
-| awesome-mcp-servers | — | — | patch ready |
+| awesome-mcp-servers | 2026-10-25 | [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) | 🟡 open, awaiting review |
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
 | ClawHub | — | — | skill bundle ready |

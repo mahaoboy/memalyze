@@ -68,7 +68,7 @@ Submission fields (adapt to whatever the form asks):
 
 | Directory | Submitted | Link | Outcome |
 |---|---|---|---|
-| awesome-mcp-servers | — | — | patch ready (`submissions/awesome-mcp-servers.patch`) |
+| awesome-mcp-servers | 2026-10-25 | https://github.com/punkpeye/awesome-mcp-servers/pull/17582 | 🟡 open, waiting for review |
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
 | MCP registry | 2026-10-25 | https://registry.modelcontextprotocol.io/v0/servers?search=memalyze | ✅ published `io.github.mahaoboy/memalyze@0.1.0` (4 mcpb packages) |
 | ClawHub | — | — | skill bundle ready |

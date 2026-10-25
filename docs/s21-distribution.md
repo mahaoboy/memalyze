@@ -17,7 +17,7 @@
 | `.mcpb` bundles (Claude Desktop / MCPB clients) | `make mcpb` | ✅ 4 platforms **uploaded** to v0.1.0; GitHub asset digests match `server.json` and `MCPB-SHA256SUMS`; binary inside reports `v0.1.0`; not yet opened in Claude Desktop (B8) |
 | `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ valid against the official `2025-12-11` schema; publish blocked on upload + login (B7) |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
-| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.1.0`); awesome PR pending |
+| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.1.0`); awesome PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | ClawHub listing | `make skill` produces the package | ❌ not submitted |
 
 ## 2. Three-step install (the acceptance test)
@@ -37,11 +37,22 @@ Since `06fb2c1` + the workflow update on 2026-10-25, `.github/workflows/release.
 
 1. runs the full test suite,
 2. cross-compiles and **verifies `SHA256SUMS` against its own artifacts** (the v0.1.0 bug),
-3. publishes a **non-draft** release with auto-generated notes,
-4. re-downloads every asset from the public API and runs `--version` + `demo`
-   (`scripts/verify-release.sh`).
+3. builds the four `.mcpb` bundles with the official CLI and verifies `MCPB-SHA256SUMS`,
+4. publishes a **non-draft** release with auto-generated notes (binaries + bundles),
+5. re-downloads every asset from the public API, checks both checksum files, unpacks each
+   bundle, and runs `--version` + `demo` (`scripts/verify-release.sh`).
 
-So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. No manual publish click.
+**Caveat:** this MCPB path has not run on a real tag yet — v0.1.0 predates it. The next tag is
+its first execution.
+
+So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. One manual step remains
+**after** the workflow, because registry metadata cannot be generated before the bytes exist:
+
+```bash
+python3 scripts/gen-server-json.py --from-release v0.1.1   # uses GitHub's asset digests
+git commit deploy/registry/server.json -m "chore(registry): v0.1.1"
+mcp-publisher publish
+```
 
 ## 2.2 MCPB bundles and the registry
 
@@ -53,6 +64,17 @@ So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. No manual pu
 3. derives `fileSha256` for every bundle and rewrites `deploy/registry/server.json`
    (`scripts/gen-server-json.py`) — hashes are never typed by hand.
 
+The release workflow runs steps 1–2 itself. Registry metadata is then generated **from the
+uploaded assets**, not from the local `dist/`:
+
+```bash
+python3 scripts/gen-server-json.py --from-release v0.1.1 --check   # compare
+python3 scripts/gen-server-json.py --from-release v0.1.1           # write
+```
+
+`--from-release` reads `sha256:` digests from the GitHub API, so CI-built bundles and local
+builds do not need to be byte-identical.
+
 Two rules that came out of the first build:
 
 - **Build from a clean tag, not from `HEAD`.** The first attempt packaged binaries that were
@@ -61,8 +83,8 @@ Two rules that came out of the first build:
   `go version -m` says `vcs.modified=true` — Go stamps VCS state into the binary, so a dirty
   tree changes the bytes even when `VERSION` is overridden to look clean.
 - **`mcpb pack` is not byte-reproducible** (timestamps), so `server.json` and
-  `MCPB-SHA256SUMS` must be regenerated after every pack, and the uploaded bytes are the
-  ones that were hashed. The *binaries* inside are reproducible: rebuilding tag `v0.1.0` from a clean
+  `MCPB-SHA256SUMS` must be generated from the files that were actually uploaded —
+  `--from-release` exists for exactly that reason. The *binaries* inside are reproducible: rebuilding tag `v0.1.0` from a clean
   checkout matched all five published hashes, including VCS stamps.
 
 ## 3. Versioning
@@ -94,8 +116,9 @@ Two rules that came out of the first build:
 | ~~`.mcpb` upload~~ | done 2026-10-25: 4 bundles + `MCPB-SHA256SUMS`, digests verified via the API | — |
 | ~~registry publish~~ | done 2026-10-25: `mcp-publisher` accepted all four mcpb packages; public API returns the entry | — |
 | `.mcpb` on a real desktop | no macOS/Windows machine here (B8) | open the bundle in Claude Desktop, run `memory_add`/`memory_search` |
-| installer end-to-end on this host | reachable but slow: 13.7 MB took 76 s (174 KB/s), HEAD requests ~20 s through two redirects | run it from a normal network; for CN users mention the size and the release page (§7) |
-| directory submissions | external review, account-bound | manual, one evening |
+| installer end-to-end on this host | 13.7 MB succeeded once in 76 s (174 KB/s); later attempts stalled at 0 bytes and failed with `curl (56)` even with retries | run it from a normal network; the script now retries and prints the exact URL on failure (§7) |
+| awesome-mcp-servers PR | external review, account-bound | [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) opened 2026-10-25; wait for review |
+| ClawHub / dsh catalog | account-bound | submit `dist/memalyze-skill-<version>.tar.gz` |
 
 ## 5.1 What publishing actually caught
 
@@ -104,8 +127,9 @@ creates `SHA256SUMS` before the glob expands, so the file hashed **itself as an 
 Every downloader's `sha256sum -c` would fail on that one line.
 
 Fixed in `06fb2c1` (hash only `memalyze-*`), the published asset was recomputed from the
-already-uploaded binaries and replaced, and `scripts/verify-release.sh` now re-downloads all
-six assets, checks every checksum, runs `--version` and `demo` before reporting PASS.
+already-uploaded binaries and replaced. `scripts/verify-release.sh` now re-downloads every
+asset, checks both checksum files, unpacks each `.mcpb` (manifest + executable bit), and runs
+`--version` + `demo` before reporting PASS.
 
 ## 6. Post-release checklist (first 72 hours)
 
@@ -133,3 +157,9 @@ six assets, checks every checksum, runs `--version` and `demo` before reporting 
 So `curl \| sh` works but is not instant for users on a similar line. Do not hide it: the
 V2EX draft says the size and points at the release page. A mirror is not set up — do not
 claim one exists.
+
+Later on 2026-10-25 the same download stopped completing from this host: several attempts sat
+at 0 bytes and failed with `curl: (56) Failure when receiving data from the peer`, including
+with `--retry 3 --retry-all-errors`. That is an asset-host/network problem, not a script bug —
+but it is why the clean-machine install check is still open. `install.sh` now retries, bounds
+connect/time, and prints the exact URL to fetch by hand when it gives up.

@@ -33,15 +33,29 @@ fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
+# Retries matter: the release asset host occasionally stalls on first connect, and a
+# silent 90-second wait looks like a hang. Show a progress bar only on a terminal.
+progress=""
+[ -t 2 ] && progress="--progress-bar"
+
 fetch() {
-  if command -v curl >/dev/null 2>&1; then curl -fsSL "$1" -o "$2"
-  elif command -v wget >/dev/null 2>&1; then wget -qO "$2" "$1"
+  if command -v curl >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    curl -fsSL $progress --retry 3 --retry-delay 2 --retry-connrefused \
+      --retry-all-errors --connect-timeout 20 --max-time 900 "$1" -o "$2"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q --tries=3 --timeout=20 --output-document="$2" "$1"
   else echo "need curl or wget" >&2; exit 1
   fi
 }
 
 echo "downloading ${asset} (${VERSION})"
-fetch "${base}/${asset}" "${tmp}/${asset}"
+if ! fetch "${base}/${asset}" "${tmp}/${asset}"; then
+  echo "error: download failed. Try again, or fetch it by hand from:" >&2
+  echo "  ${base}/${asset}" >&2
+  echo "  (if github.com is slow or blocked from your network, use a proxy or the release page)" >&2
+  exit 1
+fi
 
 # Checksum verification is not optional: it is the only integrity check a curl|sh install has.
 if fetch "${base}/SHA256SUMS" "${tmp}/SHA256SUMS" 2>/dev/null; then
