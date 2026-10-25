@@ -20,7 +20,11 @@ The registry only stores **metadata**; the artifact stays on GitHub Releases. MC
 officially supported package type, which is why this path does not need the Docker image
 (B5) at all.
 
-Order matters:
+**v0.1.0 was packed locally; from v0.1.1 the release workflow builds and uploads the four
+bundles itself.** For a new tag the order becomes: let the workflow finish →
+`./scripts/verify-release.sh vX` → `gen-server-json.py --from-release vX` → commit → publish.
+
+For the original v0.1.0 flow (bundles built by hand), the order was:
 
 ```sh
 # 1. Make sure server.json still matches the files you are about to upload.
