@@ -5,6 +5,8 @@
 One static binary. Local embeddings. No cloud, no graph database, no Python stack.
 Redaction happens **before** anything is written; every read is **audited**.
 
+[Website](https://mahaoboy.github.io/memalyze/) · [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=memalyze) · [v0.1.0](https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0)
+
 ```bash
 ./memalyze          # MCP over stdio, for Claude Code / Cline / any harness
 ```
