@@ -1,0 +1,60 @@
+name: Pilot request
+description: Request a two-week memalyze pilot (install, rule tuning, audit review)
+title: "[pilot] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for considering a pilot. Two weeks, no fee, no obligation.
+
+        We install memalyze in your environment, tune redaction to your data, review the
+        audit export with you, and write down the threat-model gaps we find. Public issues
+        are fine for the first contact; we can move to a private channel before you share
+        anything sensitive.
+  - type: input
+    id: org
+    attributes:
+      label: Organization or project
+      description: Company, team, or open-source project.
+      placeholder: Acme / agent-platform
+    validations:
+      required: true
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What are the agents doing?
+      description: What they remember, who writes to memory, and what data is sensitive.
+      placeholder: Support agents remember customer history; the DB must stay in our VPC.
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: Where would it run?
+      options:
+        - Laptop / single developer
+        - On-prem server
+        - Private cloud (VPC)
+        - Air-gapped network
+        - Not sure yet
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - Claude Code
+        - Claude Desktop
+        - Cline / Roo Code
+        - Custom harness
+        - Other
+    validations:
+      required: false
+  - type: input
+    id: contact
+    attributes:
+      label: Best way to reach you
+      description: GitHub handle, e-mail, or a scheduling link — whatever you prefer.
+    validations:
+      required: true

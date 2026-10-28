@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memalyze — agent memory your security team will approve</title>
+<meta name="description" content="Self-hosted memory for AI agents: redaction before write, append-only audit, local embeddings, one static binary.">
+<meta property="og:title" content="memalyze — agent memory your security team will approve">
+<meta property="og:description" content="Redaction before write. An audit log for every read. Local embeddings. One static binary.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mahaoboy.github.io/memalyze/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e14'/%3E%3Cpath d='M8 22V10h4l4 7 4-7h4v12h-3v-7l-5 8-5-8v7z' fill='%237ee787'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11161f; --panel2:#0e131b; --border:#222b3a;
+    --text:#e6edf3; --muted:#9aa7b8; --accent:#7ee787; --accent2:#79c0ff; --warn:#f0b72f;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  header{border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(11,14,20,.88);backdrop-filter:blur(8px);z-index:5}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;color:var(--text)}
+  .brand svg{width:26px;height:26px}
+  .nav-links{display:flex;gap:20px;font-size:14px;color:var(--muted)}
+  .nav-links a{color:var(--muted)}
+  .nav-links a:hover{color:var(--text)}
+  section{padding:72px 0;border-bottom:1px solid var(--border)}
+  .hero{padding:88px 0 64px}
+  .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 20px}
+  h1{font-size:clamp(2.2rem,5.4vw,3.8rem);line-height:1.06;letter-spacing:-.03em;margin:0 0 22px;max-width:16ch}
+  .lede{font-size:clamp(1.05rem,2vw,1.28rem);color:var(--muted);max-width:62ch;margin:0 0 30px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 22px;border-radius:10px;border:1px solid var(--border);color:var(--text);font-weight:600;font-size:15px}
+  .btn:hover{text-decoration:none;border-color:#3a465c}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#08120a}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .micro{font-size:13px;color:var(--muted);margin:0}
+  .terminal{background:linear-gradient(180deg,#0f141d,#0b0f16);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#0d121a}
+  .dot{width:11px;height:11px;border-radius:50%;background:#2b3445}
+  .dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+  .term-title{margin-left:8px;font:500 12px var(--mono);color:var(--muted)}
+  pre{margin:0;padding:24px;overflow:auto;font:13px/1.65 var(--mono);color:#cfd8e3}
+  pre .cmd{color:var(--accent)}
+  pre .ok{color:var(--accent)}
+  pre .dim{color:var(--muted)}
+  h2{font-size:clamp(1.6rem,3vw,2.15rem);letter-spacing:-.02em;margin:0 0 16px}
+  .sub{color:var(--muted);max-width:66ch;margin:0 0 36px}
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px}
+  .card h3{margin:0 0 10px;font-size:17px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .tag{display:inline-block;font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:8px}
+  .stat{background:var(--panel2);padding:22px}
+  .stat b{display:block;font-size:26px;letter-spacing:-.02em;color:var(--text)}
+  .stat span{font-size:12.5px;color:var(--muted)}
+  .install{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:start}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{position:relative;padding:0 0 22px 44px;color:var(--muted)}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--panel);border:1px solid var(--border);color:var(--accent);font:600 13px/26px var(--mono);text-align:center}
+  .steps code{color:var(--text)}
+  .limits ul{margin:0;padding-left:20px;color:var(--muted)}
+  .limits li{margin:10px 0}
+  .pilot{background:linear-gradient(180deg,#101a14,#0b0e14);border:1px solid #1f3a28;border-radius:14px;padding:34px}
+  .pilot h2{margin-bottom:10px}
+  .pilot p{color:var(--muted);max-width:64ch}
+  footer{padding:36px 0 56px;color:var(--muted);font-size:13.5px}
+  .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .foot a{color:var(--muted)}
+  code{font-family:var(--mono);font-size:.92em;background:#151c27;border:1px solid var(--border);padding:1px 6px;border-radius:5px}
+  @media(max-width:860px){
+    .cols{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .install{grid-template-columns:1fr}
+    section{padding:56px 0}
+  }
+  @media(max-width:520px){
+    .nav-links{gap:12px;font-size:13px}
+    .nav-links a.opt{display:none}
+    .stats{grid-template-columns:1fr}
+    pre{font-size:11.5px;padding:16px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#11161f"/><path d="M8 22V10h4l4 7 4-7h4v12h-3v-7l-5 8-5-8v7z" fill="#7ee787"/></svg>
+      memalyze
+    </a>
+    <nav class="nav-links">
+      <a href="#demo">Demo</a>
+      <a href="#install">Install</a>
+      <a href="#limits">Limits</a>
+      <a class="opt" href="https://registry.modelcontextprotocol.io/v0/servers?search=memalyze">Registry</a>
+      <a href="https://github.com/mahaoboy/memalyze">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">MCP · self-hosted · AGPL-3.0</p>
+    <h1>Agent memory your security team will approve.</h1>
+    <p class="lede">One static binary. Redaction before write. An append-only audit log for every read. Local embeddings. No cloud, no Python, no SaaS.</p>
+    <div class="cta">
+      <a class="btn primary" href="#pilot">Request a pilot</a>
+      <a class="btn" href="https://github.com/mahaoboy/memalyze">Read the code</a>
+    </div>
+    <p class="micro">v0.1.0 · Linux / macOS / Windows · 14 MB · 4 MCP tools</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <h2>See the governance story in 30 seconds.</h2>
+    <p class="sub">No Ollama, no network, no config. The demo writes a memory containing a phone number, an e-mail and a national ID, then shows what is actually stored and what the audit log says.</p>
+    <div class="terminal">
+      <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="term-title">memalyze demo</span></div>
+<pre><span class="cmd">$ memalyze demo</span>
+<span class="dim">[1] write two memories (one contains a phone, e-mail, national ID)</span>
+    redacted=true hits=3 rules=[email id_card_cn phone_cn]
+
+<span class="dim">[2] what is actually stored</span>
+    content = 客户张伟的手机是 [REDACTED:phone]，邮箱 [REDACTED:email]，身份证 [REDACTED:id_card]
+    <span class="ok">ok  plaintext never reaches the database</span>
+
+<span class="dim">[3] search for the original phone number</span>
+    hits = 0
+    <span class="ok">ok  no index can recover the raw value</span>
+
+<span class="dim">[5] audit export</span>
+    time,action,actor,tenant_id,scope,memory_id,query_hash,query_len,result_count,degraded
+    2026-10-25T06:52:06Z,add,demo,acme,crm,01M5R...,,0,1,false
+    2026-10-25T06:52:06Z,search,demo,acme,,,a6942f97...,11,0,true
+</pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Most agent memory is a vector table. Fine, until someone asks.</h2>
+    <p class="sub">Which customer data did the agent read last Tuesday? Can you show it without exporting the whole database? Can you deploy this inside a network with no outbound access? Those are the questions memalyze is built around.</p>
+    <div class="cols">
+      <div class="card">
+        <span class="tag">Before write</span>
+        <h3>Redact, then index</h3>
+        <p>Phone numbers, e-mail, national IDs, bank cards, API keys and PEM blocks are replaced with stable markers before dedup, FTS and embedding. The plaintext is never stored — not by us, not by you.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Every read</span>
+        <h3>Audit with hashes</h3>
+        <p>Add, search and delete are appended to an audit table. The query is stored as SHA-256 + length, never plaintext. Export one CSV and hand it to an auditor.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Offline</span>
+        <h3>One binary, local vectors</h3>
+        <p>SQLite + Ollama. No model download at runtime, no cloud call. If Ollama is down, search degrades to keyword in ≤3 s and says <code>degraded=true</code> instead of hanging.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Measured, not assumed.</h2>
+    <p class="sub">Numbers from a 60-memory Chinese corpus with 16 queries. The full experiment and the failed alternatives are in the repo.</p>
+    <div class="stats">
+      <div class="stat"><b>0.94</b><span>recall@3 · qwen3-embedding</span></div>
+      <div class="stat"><b>0.92</b><span>MRR · same run</span></div>
+      <div class="stat"><b>4</b><span>MCP tools, total</span></div>
+      <div class="stat"><b>14 MB</b><span>static binary, no runtime</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap install">
+    <div>
+      <h2>Three steps. No build toolchain.</h2>
+      <p class="sub">The installer downloads a prebuilt binary and verifies its SHA-256 before installing.</p>
+      <ol class="steps">
+        <li><code>curl -fsSL https://raw.githubusercontent.com/mahaoboy/memalyze/main/scripts/install.sh | sh</code><br><span style="font-size:13px">Windows: use the <code>.exe</code> from the release page.</span></li>
+        <li><code>ollama pull qwen3-embedding:0.6b</code><br><span style="font-size:13px">~640 MB. Local, 1024-dim, strong on Chinese.</span></li>
+        <li><code>memalyze demo</code> then wire it into Claude Code, Cline or any MCP harness.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <span class="tag">Claude Desktop</span>
+      <h3>One-click bundle</h3>
+      <p style="margin-bottom:14px">Download the <code>.mcpb</code> for your platform and open it. The binary inside is the same v0.1.0 build.</p>
+      <p><a href="https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0">macOS · Windows · Linux →</a></p>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap limits">
+    <h2>What it is not.</h2>
+    <p class="sub">Written down here, not implied away in a SECURITY.md nobody reads.</p>
+    <ul>
+      <li><strong>No per-user auth.</strong> One token per process = one trust boundary. If two people must not read each other's memories, run two processes.</li>
+      <li><strong>Pattern-based redaction.</strong> Eight families plus your own rules. It will not catch a name, an address, or a photo of an ID card. It is not a compliance certificate.</li>
+      <li><strong>SQLite, single writer.</strong> Brute-force vector scan is fine up to roughly 10k memories. There is a store interface, but only SQLite is implemented.</li>
+      <li><strong>Append-only at the SQL level, not WORM.</strong> A trigger rejects UPDATE; DELETE is not blocked. Export to object-lock or syslog storage if a hostile DBA is in your threat model.</li>
+      <li><strong>AGPL-3.0.</strong> A commercial license is available for teams that cannot use it.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="pilot">
+  <div class="wrap">
+    <div class="pilot">
+      <h2>Two-week pilot</h2>
+      <p>We install memalyze in your environment, tune the redaction rules to your data, review the audit export with you, and write down the threat-model gaps we find. You keep the deployment and the notes either way.</p>
+      <div class="cta" style="margin-top:22px;margin-bottom:0">
+        <a class="btn primary" href="https://github.com/mahaoboy/memalyze/issues/new?template=pilot.yml&amp;title=%5Bpilot%5D%20">Request a pilot</a>
+        <a class="btn" href="https://github.com/mahaoboy/memalyze/blob/main/SECURITY.md">Read the threat model</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>memalyze · self-hosted memory for agents</span>
+    <span>
+      <a href="https://github.com/mahaoboy/memalyze">GitHub</a> ·
+      <a href="https://registry.modelcontextprotocol.io/v0/servers?search=memalyze">MCP Registry</a> ·
+      <a href="https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0">v0.1.0</a> ·
+      <a href="https://github.com/mahaoboy/memalyze/blob/main/LICENSE">AGPL-3.0</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>
