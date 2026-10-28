@@ -43,9 +43,9 @@ Limits are written down rather than implied away:
 one token per process (no per-user auth), pattern-based redaction (not a compliance
 certificate), no audit UI — see SECURITY.md.
 
-I did not add a Glama badge because the server is not indexed there yet; happy to
-add one once it is. I appended the entry at the end of the section to keep the diff
-to one line — say the word if you would rather have it alphabetised.
+Added the Glama score badge — the listing is at
+https://glama.ai/mcp/servers/mahaoboy/memalyze. I appended the entry at the end of the
+section to keep the diff to one line — say the word if you would rather have it alphabetised.
 ```
 
 ## How to submit
