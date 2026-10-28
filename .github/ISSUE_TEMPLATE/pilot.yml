@@ -1,6 +1,7 @@
 name: Pilot request
 description: Request a two-week memalyze pilot (install, rule tuning, audit review)
 title: "[pilot] "
+labels: ["pilot"]
 body:
   - type: markdown
     attributes:
