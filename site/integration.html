@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memalyze — integration notes</title>
+<meta name="description" content="How memalyze fits as an optional memory backend: MCP config, HTTP, tenancy, audit, limits.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e14'/%3E%3Cpath d='M8 22V10h4l4 7 4-7h4v12h-3v-7l-5 8-5-8v7z' fill='%237ee787'/%3E%3C/svg%3E">
+<style>
+  :root{--bg:#0b0e14;--panel:#11161f;--border:#222b3a;--text:#e6edf3;--muted:#9aa7b8;--accent:#7ee787;--accent2:#79c0ff;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
+  .wrap{max-width:820px;margin:0 auto;padding:0 24px}
+  header{border-bottom:1px solid var(--border)}
+  .nav{display:flex;justify-content:space-between;align-items:center;height:60px;font-size:14px;color:var(--muted)}
+  .brand{font-weight:700;color:var(--text);display:flex;gap:10px;align-items:center}
+  main{padding:56px 0 72px}
+  h1{font-size:clamp(1.8rem,4vw,2.6rem);letter-spacing:-.02em;margin:0 0 12px}
+  .lede{color:var(--muted);max-width:62ch;margin:0 0 36px}
+  h2{font-size:1.25rem;margin:38px 0 10px;letter-spacing:-.01em}
+  h3{font-size:1rem;margin:22px 0 6px;color:var(--accent)}
+  p,li{color:var(--muted)}
+  code{font-family:var(--mono);font-size:.9em;background:#151c27;border:1px solid var(--border);padding:1px 6px;border-radius:5px}
+  pre{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;overflow:auto;font:12.5px/1.6 var(--mono);color:#cfd8e3}
+  pre code{background:none;border:0;padding:0}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+  th,td{border-bottom:1px solid var(--border);text-align:left;padding:8px 10px;vertical-align:top}
+  th{color:var(--text);font-weight:600}
+  .note{border-left:3px solid var(--accent);padding:10px 14px;background:#0f1a13;border-radius:0 8px 8px 0;color:var(--muted);font-size:14px}
+  .btn{display:inline-block;padding:11px 18px;border:1px solid var(--accent);border-radius:9px;color:var(--accent);font-weight:600}
+  .btn:hover{background:#0f1a13;text-decoration:none}
+  footer{border-top:1px solid var(--border);padding:26px 0 48px;color:var(--muted);font-size:13.5px}
+  @media(max-width:560px){table{font-size:12.5px}th,td{padding:6px}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav"><a class="brand" href="./">memalyze</a><span><a href="./">Home</a> · <a href="https://github.com/mahaoboy/memalyze">GitHub</a></span></div></header>
+<main class="wrap">
+  <h1>Integration notes</h1>
+  <p class="lede">How memalyze fits as an optional memory backend. The short version: it is a normal MCP server, it can run per-tenant, and it fails closed when exposed off-loopback without a token.</p>
+
+  <h2>What it is</h2>
+  <ul>
+    <li>One static binary, MCP over stdio or Streamable HTTP, SQLite storage, Ollama local embeddings.</li>
+    <li>Four tools: <code>memory_add</code>, <code>memory_search</code>, <code>memory_delete</code>, <code>echo</code>.</li>
+    <li>Redaction runs before dedup/FTS/embedding; every read is appended to an audit table.</li>
+  </ul>
+
+  <h2>Option A — stdio MCP server</h2>
+  <p>The simplest integration: the client spawns the binary.</p>
+<pre><code>{
+  "mcpServers": {
+    "memalyze": {
+      "command": "/usr/local/bin/memalyze",
+      "env": {
+        "MEMALYZE_DB": "/var/lib/memalyze/memalyze.db",
+        "MEMALYZE_TENANT": "acme"
+      }
+    }
+  }
+}</code></pre>
+
+  <h2>Option B — HTTP backend</h2>
+  <p>For containers or multiple clients. Binding a non-loopback address without <code>MEMALYZE_HTTP_TOKEN</code> is refused at startup.</p>
+<pre><code>MEMALYZE_HTTP_ADDR=127.0.0.1:8080 \
+MEMALYZE_HTTP_TOKEN=$(openssl rand -hex 24) \
+memalyze --http 127.0.0.1:8080</code></pre>
+
+  <h2>Tenancy and isolation</h2>
+  <table>
+    <tr><th>Level</th><th>How</th></tr>
+    <tr><td>Tenant</td><td><code>MEMALYZE_TENANT</code> / <code>tenant_id</code> on each call</td></tr>
+    <tr><td>Scope</td><td><code>scope</code> per call (e.g. <code>crm</code>, <code>support</code>)</td></tr>
+    <tr><td>Per-user auth</td><td><strong>Not implemented.</strong> One token per process = one trust boundary.</td></tr>
+  </table>
+  <div class="note">For two teams that must not read each other's memories, run two processes with separate databases and tokens. That is the supported isolation model today.</div>
+
+  <h2>Audit</h2>
+  <p>Append-only table: timestamp, actor, tenant, scope, action, memory id, query SHA-256 + length, result count, degraded flag.</p>
+  <ul>
+    <li><code>UPDATE</code> is rejected by a trigger; <code>DELETE</code> is not blocked (SQL-level append-only, not WORM).</li>
+    <li>Export: <code>memalyze audit export --format csv</code>.</li>
+    <li>For stronger guarantees, ship the CSV to object-lock or syslog storage.</li>
+  </ul>
+
+  <h2>Deployment</h2>
+  <ul>
+    <li>Prebuilt binaries for Linux/macOS/Windows (amd64/arm64); no runtime.</li>
+    <li>systemd unit and <code>memalyze backup</code> (<code>VACUUM INTO</code>) are in the repo.</li>
+    <li>Ollama + <code>qwen3-embedding:0.6b</code> (~640 MB). If Ollama is unavailable, search degrades to keyword in ≤3 s and returns <code>degraded=true</code>.</li>
+  </ul>
+
+  <h2>Limits</h2>
+  <ul>
+    <li>Redaction is pattern matching (8 families + custom rules); no names/addresses/images.</li>
+    <li>SQLite single writer; brute-force vectors suit ~10k memories per instance.</li>
+    <li>No audit UI, retention policy, encryption at rest, or TLS termination.</li>
+    <li>AGPL-3.0; commercial license available.</li>
+  </ul>
+
+  <p style="margin-top:34px"><a class="btn" href="https://github.com/mahaoboy/memalyze/issues/new?template=pilot.yml&amp;title=%5Bpilot%5D%20">Request a two-week pilot →</a></p>
+</main>
+<footer><div class="wrap">memalyze · <a href="./">home</a> · <a href="https://github.com/mahaoboy/memalyze">source</a> · <a href="https://github.com/mahaoboy/memalyze/blob/main/SECURITY.md">threat model</a></div></footer>
+</body>
+</html>
