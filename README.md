@@ -280,6 +280,15 @@ CI (no daemon in the dev environment), brute-force vector scan, Chinese-first de
 | [`docs/s24-review.md`](docs/s24-review.md) | the milestone review template (not yet filled) |
 | [`SECURITY.md`](SECURITY.md) | threat model: what is defended, what is out of scope |
 
+## Pilot
+
+Two-week pilot: we install memalyze in your environment, tune the redaction rules to your
+data, review the audit export with you, and write down the threat-model gaps we find. No fee;
+you keep the deployment and the notes.
+
+[Request a pilot](https://github.com/mahaoboy/memalyze/issues/new?template=pilot.yml&title=%5Bpilot%5D%20) ·
+[Integration notes](https://mahaoboy.github.io/memalyze/integration.html)
+
 ## Non-goals
 
 - Not a SaaS: you self-host, we do not hold your data.
