@@ -1,6 +1,6 @@
 # S21 — Packaging and distribution
 
-- **Status**: **v0.1.0 published and listed in the official MCP Registry** (2026-10-25); `.mcpb` bundles uploaded and digest-verified; community channels still pending
+- **Status**: **v0.2.0 GitHub Release published and workflow asset-verified** (2026-11-09); the official MCP Registry still serves 0.1.0 because the 0.2.0 metadata publish requires a fresh GitHub device login; community channels still pending
 - **Milestone**: M4 / S21
 - **Acceptance**: a stranger can get from zero to a working MCP server in three steps;
   the project is discoverable in at least one directory.
@@ -15,7 +15,7 @@
 | `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ end-to-end run from this host is slow (13.7 MB in 76 s, 174 KB/s); manual download + `sha256sum -c` verified, see §7 |
 | dsh / agent skill | `skills/memalyze/` | ✅ content complete |
 | `.mcpb` bundles (Claude Desktop / MCPB clients) | `make mcpb` | ✅ 4 platforms **uploaded** to v0.1.0; GitHub asset digests match `server.json` and `MCPB-SHA256SUMS`; binary inside reports `v0.1.0`; not yet opened in Claude Desktop (B8) |
-| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ valid against the official `2025-12-11` schema; publish blocked on upload + login (B7) |
+| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ v0.2.0 validated by the live registry publisher; publication requires GitHub device authorization |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
 | MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.1.0`); awesome PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | ClawHub listing | `make skill` produces the package | ❌ not submitted |
@@ -42,8 +42,9 @@ Since `06fb2c1` + the workflow update on 2026-10-25, `.github/workflows/release.
 5. re-downloads every asset from the public API, checks both checksum files, unpacks each
    bundle, and runs `--version` + `demo` (`scripts/verify-release.sh`).
 
-**Caveat:** this MCPB path has not run on a real tag yet — v0.1.0 predates it. The next tag is
-its first execution.
+**v0.2.0 validation:** the real-tag [release run](https://github.com/mahaoboy/memalyze/actions/runs/42574758428)
+completed every step successfully, including downloading and verifying the 11 published assets.
+Real macOS/Windows desktop installation remains a separate B8 check.
 
 So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. One manual step remains
 **after** the workflow, because registry metadata cannot be generated before the bytes exist:
