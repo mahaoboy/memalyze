@@ -47,8 +47,14 @@ type SearchResult struct {
 //
 // Query 为空时走 Recent（列表语义），不涉及向量，不标记降级。
 func (s *Service) Search(ctx context.Context, q types.SearchQuery) (res SearchResult, err error) {
-	// 每次检索都留痕（含失败）：这是"谁在何时读了哪条记忆"的唯一来源。
-	defer func() { s.auditSearch(ctx, q, res, err) }()
+	// 每次检索都留痕（含失败）。严格模式下，无法留痕就不能把命中内容返回给调用方。
+	defer func() {
+		auditErr := s.auditSearch(ctx, q, res, err)
+		if auditErr != nil {
+			res.Hits = nil
+			err = errors.Join(err, auditErr)
+		}
+	}()
 
 	if s.store == nil {
 		return SearchResult{}, fmt.Errorf("%w: nil store", store.ErrInvalid)

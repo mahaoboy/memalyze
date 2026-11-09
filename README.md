@@ -5,14 +5,15 @@
 One static binary. Local embeddings. No cloud, no graph database, no Python stack.
 Redaction happens **before** anything is written; every read is **audited**.
 
-[Website](https://mahaoboy.github.io/memalyze/) · [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=memalyze) · [v0.1.0](https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0)
+[Website](https://mahaoboy.github.io/memalyze/) · [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=memalyze) · [v0.2.0](https://github.com/mahaoboy/memalyze/releases/tag/v0.2.0)
 
 ```bash
 ./memalyze          # MCP over stdio, for Claude Code / Cline / any harness
 ```
 
-[**v0.1.0 is out**](https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0) — static
-binaries for linux/darwin/windows, checksums published alongside.
+[**v0.2.0 is out**](https://github.com/mahaoboy/memalyze/releases/tag/v0.2.0) — static
+binaries for linux/darwin/windows, checksums, hash-chained audit verification, backup
+checkpoints, and local HTML/JSON governance reports.
 
 ![memalyze governance demo](docs/assets/demo.png)
 
@@ -44,9 +45,9 @@ memalyze is the middleware that fixes those three, and nothing else.
 | Deployment | SaaS | with the framework | 173 Python packages | **✅ one static binary / one compose file** |
 | Tool surface | — | — | 23 tools | **4 tools** |
 
-\* A database trigger rejects `UPDATE` on `audit_log`; `DELETE` is **not** blocked, so anyone
-with the database file can remove rows. It is append-only at the SQL level, not WORM — export
-to object-lock or syslog storage if deletions are inside your threat model
+\* Triggers reject both `UPDATE` and `DELETE`; a SHA-256 hash chain makes later edits visible.
+This is **not WORM**: use `audit verify` with a checkpoint stored independently from the database
+to detect tail truncation. Anyone who can rewrite both can still fabricate a chain
 ([`SECURITY.md`](SECURITY.md)).
 
 Not another mem0, and not Basic Memory either: those are good at *remembering*. memalyze
@@ -101,17 +102,17 @@ plus pseudocode. All options: [`examples/README.md`](examples/README.md).
 ### 3. Or one-click in Claude Desktop (MCPB)
 
 Download the bundle for your platform from the
-[v0.1.0 release](https://github.com/mahaoboy/memalyze/releases/tag/v0.1.0) and open it.
+[v0.2.0 release](https://github.com/mahaoboy/memalyze/releases/tag/v0.2.0) and open it.
 Claude Desktop shows an install sheet and asks where to keep `memalyze.db`.
 
 | Platform | File |
 |---|---|
-| macOS Apple Silicon | `memalyze-0.1.0-darwin-arm64.mcpb` |
-| macOS Intel | `memalyze-0.1.0-darwin-amd64.mcpb` |
-| Windows x64 | `memalyze-0.1.0-windows-amd64.mcpb` |
-| Linux x64 | `memalyze-0.1.0-linux-amd64.mcpb` |
+| macOS Apple Silicon | `memalyze-0.2.0-darwin-arm64.mcpb` |
+| macOS Intel | `memalyze-0.2.0-darwin-amd64.mcpb` |
+| Windows x64 | `memalyze-0.2.0-windows-amd64.mcpb` |
+| Linux x64 | `memalyze-0.2.0-linux-amd64.mcpb` |
 
-The binary inside is the same `v0.1.0` build as above. These bundles are new and have not
+The binary inside is the same `v0.2.0` build as above. These bundles are new and have not
 been opened on a real macOS/Windows desktop yet — if the install sheet does not appear,
 use the plain binary. The server is also listed in the
 [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=memalyze).
@@ -160,18 +161,29 @@ embedding — so plaintext never reaches the main table, the full-text index or 
 Modes: `enforce` (default), `dry-run` (count only, for tuning), `off` (debugging).
 Custom rule packs are JSON: [`examples/redaction-rules.json`](examples/redaction-rules.json).
 
-**Audit (read path).** Append-only `audit_log` (a database trigger rejects `UPDATE`):
-actor, tenant, scope, action, memory id, timestamp, result count, `degraded`, redaction
-count. The search text itself is stored as **SHA-256 + length** unless you explicitly set
-`MEMALYZE_AUDIT_QUERY_PLAIN=1`.
+**Audit (read path).** Schema-v3 `audit_log` records actor, tenant, scope, action, memory id,
+timestamp, result count, `degraded`, and redaction count. `UPDATE` and `DELETE` triggers plus a
+SHA-256 hash chain provide tamper evidence. Search text is stored as **SHA-256 + length** unless
+you explicitly set `MEMALYZE_AUDIT_QUERY_PLAIN=1`.
 
 ```bash
 memalyze audit export --from 2026-10-01 --to 2026-10-31 --format csv --out audit.csv
-memalyze audit export --tenant acme --format json
+memalyze audit verify --write-checkpoint ./memalyze.audit.json
+memalyze audit verify --checkpoint ./memalyze.audit.json
+memalyze audit report --tenant acme --format html --out governance.html
 ```
 
+`verify` without a checkpoint checks internal consistency only. Exact checkpoint comparison also
+detects a deleted (or newly advanced) tail; keep the unsigned checkpoint in an independent trust
+domain. `backup` writes a matching `<snapshot>.audit.json` sidecar. Static reports contain only
+aggregates and verification state—not memory IDs/content, query text/hash/length, or audit detail.
+
+Set `MEMALYZE_AUDIT_STRICT=on` to return an error when audit append fails. Search then returns no
+hits on audit failure; add/delete/reembed side effects are **not rolled back**. See
+[`docs/audit-verification.md`](docs/audit-verification.md).
+
 **What is not here yet:** per-user authentication (one token per process, `actor` from
-env), audit retention/purge, reversible redaction, audit UI.
+env), audit retention/purge, reversible redaction, or an interactive audit UI.
 
 ## Retrieval, measured
 
@@ -210,13 +222,15 @@ internal/memory  redact → dedup → store → embed; search: vector → keywor
 - SQLite (WAL) with ULID ids, partial unique index for dedup, soft delete, TTL.
 - Vectors are `float32` little-endian BLOBs; search is brute-force cosine (fine under ~10k
   memories, and the honest limit of a single-binary design).
-- Schema migrations are versioned via `PRAGMA user_version` (v1 → v2 adds the audit table).
+- Schema migrations are versioned via `PRAGMA user_version` (v2 → v3 backfills the audit hash
+  chain and installs both append-only triggers).
 
 ## Operations
 
 ```bash
 memalyze audit export --from 2026-10-01 --format csv --out audit.csv   # who read what
-memalyze backup --out /var/backups/memalyze-$(date +%F).db             # consistent snapshot
+memalyze backup --out /var/backups/memalyze-$(date +%F).db             # snapshot + .audit.json checkpoint
+memalyze audit verify --checkpoint /var/backups/memalyze-$(date +%F).db.audit.json --db /var/backups/memalyze-$(date +%F).db
 memalyze health --url http://127.0.0.1:8080/healthz                    # probe
 ```
 
@@ -224,7 +238,8 @@ memalyze health --url http://127.0.0.1:8080/healthz                    # probe
   [`docs/s16-systemd.md`](docs/s16-systemd.md) (hardened unit, env file, backup timer).
 - **Docker**: [`docs/s16-docker.md`](docs/s16-docker.md).
 - `backup` uses `VACUUM INTO`, so snapshots are consistent under WAL and include the audit
-  table; it refuses to overwrite an existing file.
+  table; it refuses to overwrite an existing file. It verifies the completed snapshot and writes
+  a separate mode-`0600` `.audit.json` checkpoint for restore-time verification.
 
 ## Configuration
 
@@ -243,6 +258,7 @@ All through environment variables; defaults work out of the box.
 | `MEMALYZE_AUDIT` | `on` | append audit rows |
 | `MEMALYZE_ACTOR` | `local` | actor recorded in audit |
 | `MEMALYZE_AUDIT_QUERY_PLAIN` | `off` | store query text (default: hash only) |
+| `MEMALYZE_AUDIT_STRICT` | `off` | fail the response when audit append fails; not a mutation rollback |
 | `MEMALYZE_HTTP_ADDR` | *(empty = stdio)* | e.g. `:8080` for Streamable HTTP |
 | `MEMALYZE_HTTP_TOKEN` | *(empty)* | Bearer token; **required** when binding off-loopback |
 
@@ -256,7 +272,7 @@ Honest snapshot — this is an early-stage project, not a 1.0.
 | M1 备料与技术验证 (S5–S8) | ✅ |
 | M2 核心链路 (S9–S14) | ✅ |
 | M3 打磨与文档 (S15–S19) | ✅ S15 governance, S16 Docker, S17 docs, S18 tests+CI, S19 examples |
-| M4 发布 (S20–S23) | 🟡 S20 ✅, S21 ✅ (**v0.1.0 public**), S22 GitHub ✅ / HN·Reddit·V2EX pending, S23 ⬜ |
+| M4 发布 (S20–S23) | 🟡 S20 ✅, S21 ✅ (**v0.2.0 public**), S22 GitHub ✅ / HN·Reddit·V2EX pending, S23 ⬜ |
 | M5 复盘 (S24) | ⬜ needs real users |
 | M5 复盘 (S24) | ⬜ |
 
@@ -268,6 +284,8 @@ CI (no daemon in the dev environment), brute-force vector scan, Chinese-first de
 
 | Doc | What it covers |
 |---|---|
+| [`docs/audit-verification.md`](docs/audit-verification.md) | hash format, checkpoints, strict mode, backup/restore, report privacy |
+| [`docs/release-notes-v0.2.0.md`](docs/release-notes-v0.2.0.md) | v0.2.0 features, upgrade, limits, verification |
 | [`docs/s15-redaction-audit.md`](docs/s15-redaction-audit.md) | rules, modes, audit schema, demo transcript |
 | [`docs/s16-docker.md`](docs/s16-docker.md) | compose stack, token policy, verification status |
 | [`docs/s16-systemd.md`](docs/s16-systemd.md) | hardened systemd unit, env file, backup/restore |

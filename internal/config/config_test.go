@@ -12,7 +12,7 @@ func TestLoadDefaults(t *testing.T) {
 		"MEMALYZE_DB", "MEMALYZE_OLLAMA_URL", "MEMALYZE_EMBED_MODEL", "MEMALYZE_TENANT",
 		"MEMALYZE_QUERY_TIMEOUT", "MEMALYZE_KEEP_ALIVE",
 		"MEMALYZE_REDACT_MODE", "MEMALYZE_REDACT_RULES", "MEMALYZE_AUDIT",
-		"MEMALYZE_ACTOR", "MEMALYZE_AUDIT_QUERY_PLAIN",
+		"MEMALYZE_ACTOR", "MEMALYZE_AUDIT_QUERY_PLAIN", "MEMALYZE_AUDIT_STRICT",
 	} {
 		t.Setenv(key, "")
 	}
@@ -46,6 +46,7 @@ func TestLoadFromEnv(t *testing.T) {
 	t.Setenv("MEMALYZE_AUDIT", "off")
 	t.Setenv("MEMALYZE_ACTOR", "claude-code")
 	t.Setenv("MEMALYZE_AUDIT_QUERY_PLAIN", "1")
+	t.Setenv("MEMALYZE_AUDIT_STRICT", "on")
 
 	got := Load()
 	want := Config{
@@ -60,6 +61,7 @@ func TestLoadFromEnv(t *testing.T) {
 		AuditEnabled:    false,
 		Actor:           "claude-code",
 		AuditQueryPlain: true,
+		AuditStrict:     true,
 	}
 	if got != want {
 		t.Fatalf("Load() = %+v, want %+v", got, want)

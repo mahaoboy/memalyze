@@ -1,14 +1,34 @@
 package sqlite
 
-// 迁移按版本递增，每个版本一个语句块；已存在的库从 user_version 继续往上跑。
+import (
+	"context"
+	"database/sql"
+)
+
+// 迁移按版本递增；已存在的库从 user_version 继续往上跑。
+// v3 需要在 Go 中计算历史哈希，因此迁移不再局限于纯 DDL。
 //
 // 约定：**只追加，不改历史版本**。改了 v1 的语句会让老库和新库分叉。
-var migrations = []struct {
+type migration struct {
 	version int
-	stmts   []string
-}{
-	{1, schemaV1},
-	{2, schemaV2},
+	apply   func(context.Context, *sql.Tx) error
+}
+
+func ddlMigration(stmts []string) func(context.Context, *sql.Tx) error {
+	return func(ctx context.Context, tx *sql.Tx) error {
+		for _, stmt := range stmts {
+			if _, err := tx.ExecContext(ctx, stmt); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+var migrations = []migration{
+	{1, ddlMigration(schemaV1)},
+	{2, ddlMigration(schemaV2)},
+	{3, migrateAuditChain},
 }
 
 // latestVersion 是最新 schema 版本，必须等于 migrations 里最大的 version。
@@ -102,6 +122,53 @@ var schemaV2 = []string{
 	`CREATE INDEX IF NOT EXISTS ix_audit_tenant_ts ON audit_log(tenant_id, ts)`,
 	`CREATE INDEX IF NOT EXISTS ix_audit_memory ON audit_log(memory_id) WHERE memory_id IS NOT NULL`,
 	`CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit_log BEGIN
+		SELECT RAISE(ABORT, 'audit_log is append-only');
+	END`,
+}
+
+// v3 重建审计表：旧表的 UPDATE 触发器不允许直接回填 hash，所以迁移事务内
+// 先改名、计算并插入新表，再删除旧表。所有步骤要么全部提交，要么全部回滚。
+var auditChainPreDDL = []string{
+	`DROP TRIGGER IF EXISTS audit_no_update`,
+	`ALTER TABLE audit_log RENAME TO audit_log_v2`,
+	`CREATE TABLE audit_log (
+		seq          INTEGER PRIMARY KEY,
+		-- SQLite 的 v2 TEXT PRIMARY KEY 允许 NULL；保留此类历史行。新事件由 AppendAudit 保证非空。
+		id           TEXT UNIQUE,
+		ts           INTEGER NOT NULL,
+		actor        TEXT,
+		tenant_id    TEXT NOT NULL,
+		scope        TEXT,
+		action       TEXT NOT NULL,
+		memory_id    TEXT,
+		query_hash   TEXT,
+		query_len    INTEGER NOT NULL DEFAULT 0,
+		result_count INTEGER NOT NULL DEFAULT 0,
+		degraded     INTEGER NOT NULL DEFAULT 0,
+		duplicate    INTEGER NOT NULL DEFAULT 0,
+		redacted     INTEGER NOT NULL DEFAULT 0,
+		dry_run      INTEGER NOT NULL DEFAULT 0,
+		detail       TEXT,
+		prev_hash    TEXT NOT NULL,
+		hash         TEXT NOT NULL
+	)`,
+}
+
+var auditChainPostDDL = []string{
+	`DROP TABLE audit_log_v2`,
+	`CREATE INDEX ix_audit_ts ON audit_log(ts)`,
+	`CREATE INDEX ix_audit_tenant_ts ON audit_log(tenant_id, ts)`,
+	`CREATE INDEX ix_audit_memory ON audit_log(memory_id) WHERE memory_id IS NOT NULL`,
+	// REPLACE 的隐式 DELETE 在 recursive_triggers=OFF 时可能不触发 DELETE 触发器；
+	// 在冲突处理之前直接拒绝同 seq/id 的插入，封堵 INSERT OR REPLACE 绕过。
+	`CREATE TRIGGER audit_no_replace BEFORE INSERT ON audit_log
+	 WHEN EXISTS(SELECT 1 FROM audit_log WHERE seq = NEW.seq OR id = NEW.id) BEGIN
+		SELECT RAISE(ABORT, 'audit_log is append-only');
+	END`,
+	`CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit_log BEGIN
+		SELECT RAISE(ABORT, 'audit_log is append-only');
+	END`,
+	`CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit_log BEGIN
 		SELECT RAISE(ABORT, 'audit_log is append-only');
 	END`,
 }

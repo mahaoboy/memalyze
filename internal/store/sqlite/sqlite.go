@@ -50,6 +50,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		"PRAGMA journal_mode=WAL",
 		"PRAGMA busy_timeout=5000",
 		"PRAGMA foreign_keys=ON",
+		"PRAGMA recursive_triggers=ON",
 		"PRAGMA synchronous=NORMAL",
 	}
 	for _, p := range pragmas {
@@ -84,31 +85,29 @@ func (s *Store) migrate(ctx context.Context) error {
 		if m.version <= version {
 			continue
 		}
-		if err := s.applyMigration(ctx, m.version, m.stmts); err != nil {
+		if err := s.applyMigration(ctx, m); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *Store) applyMigration(ctx context.Context, version int, stmts []string) error {
+func (s *Store) applyMigration(ctx context.Context, m migration) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("sqlite: begin migration v%d: %w", version, err)
+		return fmt.Errorf("sqlite: begin migration v%d: %w", m.version, err)
 	}
 	defer tx.Rollback()
 
-	for _, stmt := range stmts {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("sqlite: migrate v%d: %w", version, err)
-		}
+	if err := m.apply(ctx, tx); err != nil {
+		return fmt.Errorf("sqlite: migrate v%d: %w", m.version, err)
 	}
 	// PRAGMA 不支持占位符；version 来自常量表，拼接安全。
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
-		return fmt.Errorf("sqlite: set user_version %d: %w", version, err)
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", m.version)); err != nil {
+		return fmt.Errorf("sqlite: set user_version %d: %w", m.version, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("sqlite: commit migration v%d: %w", version, err)
+		return fmt.Errorf("sqlite: commit migration v%d: %w", m.version, err)
 	}
 	return nil
 }

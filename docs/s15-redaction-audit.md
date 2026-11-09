@@ -78,8 +78,8 @@ silently weakening the default. See D-020.
 
 ## 5. Audit log
 
-Table `audit_log` (schema v2; `UPDATE` is rejected by a trigger, `DELETE` is not — see
-`SECURITY.md`, "append-only at the SQL level, not WORM"):
+Table `audit_log` (current schema v3; both `UPDATE` and `DELETE` are rejected by triggers —
+see [`../SECURITY.md`](../SECURITY.md) and [`audit-verification.md`](audit-verification.md); still not WORM):
 
 | Column | Meaning |
 |---|---|
@@ -90,14 +90,18 @@ Table `audit_log` (schema v2; `UPDATE` is rejected by a trigger, `DELETE` is not
 | `query_hash`, `query_len` | **SHA-256 + byte length**, not the query text |
 | `result_count` | hits returned, or 1/0 for mutations |
 | `degraded`, `duplicate`, `redacted`, `dry_run` | outcome flags |
-| `detail` | `degrade=query_timeout`, `list=recent`, `error=…` — never memory text |
+| `detail` | `degrade=query_timeout`, `list=recent`, `error=…` — never memory text; query text only with the explicit opt-in |
+| `seq`, `prev_hash`, `hash` | v0.2.0 contiguous sequence and SHA-256 chain fields |
 
 Guarantees:
 
-- **Append-only at the database level**: `audit_no_update` trigger raises `ABORT` on any
-  `UPDATE audit_log`. Application code only ever issues `INSERT`.
-- **Best-effort, never blocking**: writes use `context.WithoutCancel` + a 2 s cap, so a
-  timed-out search still produces its audit row; a failed audit only logs to stderr.
+- **Append-only at the database level**: `audit_no_update` and `audit_no_delete` raise `ABORT`
+  on mutations. Application code only ever issues serialized `INSERT` operations.
+- **Verifiable with an external anchor**: `audit verify` recomputes the full chain; exact
+  checkpoint comparison is required to detect complete tail truncation.
+- **Best-effort by default, optional strict response**: writes use `context.WithoutCancel` + a
+  2 s cap. A failed audit normally logs to stderr; `MEMALYZE_AUDIT_STRICT=on` propagates the
+  error and suppresses search hits, but does not roll back completed mutations.
 - **No plaintext by default**: `MEMALYZE_AUDIT_QUERY_PLAIN=1` is required to store the
   query itself (then it appears in `detail`).
 - Failed operations are audited too (`result_count=0`, `detail=error=…`), because
@@ -106,7 +110,8 @@ Guarantees:
 ## 6. What is deliberately not here
 
 - Reversible redaction (would need a key + KMS story; v0.1 stores no key material).
-- Audit UI, pagination, retention policy, WORM storage.
+- Interactive audit UI, retention policy, WORM storage. v0.2.0 adds static HTML/JSON reports,
+  paginated report aggregation, and independent checkpoints instead.
 - New MCP tools — the surface remains `memory_add` / `memory_search` / `memory_delete` /
   `echo`.
 - Data-residency features (R8 red line).
@@ -120,6 +125,7 @@ Guarantees:
 | `MEMALYZE_AUDIT` | `on` | `on` / `off` |
 | `MEMALYZE_ACTOR` | `local` | actor written into every audit row |
 | `MEMALYZE_AUDIT_QUERY_PLAIN` | `off` | store query text in `detail` (default: hash only) |
+| `MEMALYZE_AUDIT_STRICT` | `off` | propagate audit failure; search returns no hits; mutations are not rolled back |
 
 Bad rules **fail startup** instead of silently disabling redaction.
 

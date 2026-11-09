@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -14,10 +15,12 @@ import (
 // 编译期断言：审计接口也必须实现。
 var _ store.AuditStore = (*Store)(nil)
 
-// AppendAudit 追加一条审计记录。
-//
-// 只做 INSERT：不 UPDATE、不 UPSERT。数据库层还有 audit_no_update 触发器兜底，
-// 保证「谁读过哪条记忆」这条证据链不可被事后篡改。
+type contextQueryer interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+// AppendAudit 在 BEGIN IMMEDIATE 事务中读取链头并追加一条事件。
+// 调用方提供的 Seq/PrevHash/Hash 一律忽略，链字段只能由存储层生成。
 func (s *Store) AppendAudit(ctx context.Context, e store.AuditEntry) error {
 	if strings.TrimSpace(e.TenantID) == "" {
 		return fmt.Errorf("%w: audit tenant_id required", store.ErrInvalid)
@@ -28,32 +31,62 @@ func (s *Store) AppendAudit(ctx context.Context, e store.AuditEntry) error {
 	if e.ID == "" {
 		e.ID = id.New()
 	}
+	e.IDNull = false // NULL 仅允许迁移保留，不能由新写入路径制造。
 	if e.Time.IsZero() {
 		e.Time = time.Now()
 	}
-	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO audit_log
-		 (id, ts, actor, tenant_id, scope, action, memory_id, query_hash, query_len,
-		  result_count, degraded, duplicate, redacted, dry_run, detail)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		e.ID, ms(e.Time), nullable(e.Actor), e.TenantID, nullable(e.Scope), string(e.Action),
-		nullable(e.MemoryID), nullable(e.QueryHash), e.QueryLen, e.ResultCount,
-		boolInt(e.Degraded), boolInt(e.Duplicate), e.Redacted, boolInt(e.DryRun), nullable(e.Detail))
+
+	conn, err := s.db.Conn(ctx)
 	if err != nil {
+		return fmt.Errorf("sqlite: audit connection: %w", err)
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, "BEGIN IMMEDIATE"); err != nil {
+		return fmt.Errorf("sqlite: begin audit append: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			// 调用方取消也不能留下打开事务；回滚只操作本地连接。
+			_, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK")
+		}
+	}()
+
+	var lastSeq int64
+	prev := store.AuditGenesisHash
+	err = conn.QueryRowContext(ctx, `SELECT seq, hash FROM audit_log ORDER BY seq DESC LIMIT 1`).Scan(&lastSeq, &prev)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		lastSeq = 0
+		prev = store.AuditGenesisHash
+	case err != nil:
+		return fmt.Errorf("sqlite: read audit head: %w", err)
+	}
+
+	e.Seq = lastSeq + 1
+	e.PrevHash = prev
+	e.Hash = hashAuditEntry(e)
+	if err := insertAuditEvent(ctx, conn, e); err != nil {
 		return fmt.Errorf("sqlite: append audit: %w", err)
 	}
+	if _, err := conn.ExecContext(ctx, "COMMIT"); err != nil {
+		return fmt.Errorf("sqlite: commit audit append: %w", err)
+	}
+	committed = true
 	return nil
 }
 
 // QueryAudit 按时间升序返回审计（导出用）。
 func (s *Store) QueryAudit(ctx context.Context, f store.AuditFilter) ([]store.AuditEntry, error) {
+	return queryAudit(ctx, s.db, f)
+}
+
+func queryAudit(ctx context.Context, q contextQueryer, f store.AuditFilter) ([]store.AuditEntry, error) {
 	var (
 		b    strings.Builder
 		args []any
 	)
-	b.WriteString(`SELECT id, ts, actor, tenant_id, scope, action, memory_id, query_hash,
-		query_len, result_count, degraded, duplicate, redacted, dry_run, detail
-		FROM audit_log WHERE 1 = 1`)
+	b.WriteString(`SELECT ` + auditColumns + ` FROM audit_log WHERE 1 = 1`)
 	if f.TenantID != "" {
 		b.WriteString(` AND tenant_id = ?`)
 		args = append(args, f.TenantID)
@@ -77,10 +110,10 @@ func (s *Store) QueryAudit(ctx context.Context, f store.AuditFilter) ([]store.Au
 		}
 		b.WriteString(`)`)
 	}
-	b.WriteString(` ORDER BY ts ASC, id ASC LIMIT ? OFFSET ?`)
+	b.WriteString(` ORDER BY ts ASC, id ASC, seq ASC LIMIT ? OFFSET ?`)
 	args = append(args, auditLimit(f.Limit), max(f.Offset, 0))
 
-	rows, err := s.db.QueryContext(ctx, b.String(), args...)
+	rows, err := q.QueryContext(ctx, b.String(), args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query audit: %w", err)
 	}
@@ -88,28 +121,10 @@ func (s *Store) QueryAudit(ctx context.Context, f store.AuditFilter) ([]store.Au
 
 	var out []store.AuditEntry
 	for rows.Next() {
-		var (
-			e                          store.AuditEntry
-			ts                         int64
-			actor, scope, memID, qhash sql.NullString
-			detail                     sql.NullString
-			degraded, dup, dryRun      int
-			action                     string
-		)
-		if err := rows.Scan(&e.ID, &ts, &actor, &e.TenantID, &scope, &action, &memID,
-			&qhash, &e.QueryLen, &e.ResultCount, &degraded, &dup, &e.Redacted, &dryRun, &detail); err != nil {
+		e, err := scanAudit(rows, true)
+		if err != nil {
 			return nil, fmt.Errorf("sqlite: scan audit: %w", err)
 		}
-		e.Time = fromMs(ts)
-		e.Actor = actor.String
-		e.Scope = scope.String
-		e.MemoryID = memID.String
-		e.QueryHash = qhash.String
-		e.Detail = detail.String
-		e.Action = store.AuditAction(action)
-		e.Degraded = degraded != 0
-		e.Duplicate = dup != 0
-		e.DryRun = dryRun != 0
 		out = append(out, e)
 	}
 	if err := rows.Err(); err != nil {

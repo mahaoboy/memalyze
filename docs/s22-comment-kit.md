@@ -27,11 +27,12 @@ Post this as a top-level comment within ~2 minutes of submitting, then edit only
 > or anything in an image. It is pattern matching, not a compliance certificate; SECURITY.md
 > lists the gaps.
 >
-> **The audit is append-only at the SQL level, not WORM.** A trigger raises ABORT on UPDATE;
-> DELETE is not blocked. Anyone with the database file can still delete rows. If your threat
-> model includes a hostile DBA, export the CSV to WORM/SIEM storage — I would rather write
-> that here than have it come up in a security review. Search queries are stored as SHA-256
-> + length, never plaintext, unless you explicitly opt in with `MEMALYZE_AUDIT_QUERY_PLAIN=1`.
+> **The audit is tamper-evident, not WORM.** Triggers reject UPDATE and DELETE, a before-insert
+> guard blocks REPLACE conflicts, and every event is SHA-256 chained. A privileged attacker can
+> still drop triggers or rewrite the whole database, so `audit verify` supports an independently
+> stored checkpoint to detect tail truncation. If the attacker controls every checkpoint too,
+> export to WORM/SIEM storage. Search queries are stored as SHA-256 + length, never plaintext,
+> unless you explicitly opt in with `MEMALYZE_AUDIT_QUERY_PLAIN=1`.
 >
 > **Retrieval numbers** are from a 60-memory Chinese corpus, 16 queries: qwen3-embedding:0.6b
 > gets recall@3 0.94 / MRR 0.92; CJK-bigram FTS5 backfill gets 0.88 recall. Two findings
@@ -43,14 +44,14 @@ Post this as a top-level comment within ~2 minutes of submitting, then edit only
 > off the MCP handshake; now the first search after idle is 1.1–1.5 s.
 >
 > **Not included**: per-user auth (one token per process = one trust boundary), reversible
-> redaction, an audit UI, Postgres (the store is an interface, but only SQLite is implemented).
+> redaction, an interactive audit UI, Postgres (the store is an interface, but only SQLite is implemented).
 >
 > The thing I actually want feedback on: **is "redaction before write" the right default for
 > a memory store, or do people need the raw value recoverable?** I chose irreversible and
 > wrote down the cost.
 
-Why this works: it leads with the mechanism, concedes the weak point (DELETE), and asks one
-real question. Do not add a link to the repo in the comment — it is already in the post.
+Why this works: it leads with the mechanism, concedes the weak point (not WORM; checkpoints
+need independent storage), and asks one real question. Do not add a link to the repo in the comment — it is already in the post.
 
 ---
 
@@ -67,7 +68,7 @@ is not. Never answer a tone question with a technical answer.
 | 4 | "No auth = toy" | Correct for multi-team use today. One token = one trust boundary, and it fails closed if you bind a non-loopback address without a token. Per-user auth is the next milestone, not a hidden feature. |
 | 5 | "Redaction will miss things" | Yes. It is regex/pattern matching, 8 rule classes, and SECURITY.md lists what it does not catch. It reduces blast radius; it is not a compliance certificate. |
 | 6 | "Redaction will have false positives" | Yes — an order number that looks like a bank card gets redacted. That is why `dry-run` mode exists: it records hits without rewriting, so you can tune rules before enforcing. |
-| 7 | "Anyone can DELETE the audit rows" | True. UPDATE is blocked by a trigger; DELETE is not. Treat it as app-level append-only and ship the export to WORM/SIEM if the DBA is in scope. I would rather say this than overclaim. |
+| 7 | "Anyone can DELETE the audit rows" | Ordinary DELETE and REPLACE are blocked by triggers, but a privileged attacker can drop them. The hash chain detects ordinary edits; exact comparison with an independently stored checkpoint is required to detect deletion of a valid suffix. This is not WORM, so use WORM/SIEM export when the DBA is hostile. |
 | 8 | "SQLite won't scale / WAL concurrency" | Writes are serialized; this is a personal/team memory store, not an ingest pipeline. VACUUM INTO gives a consistent backup under WAL (`memalyze backup`). If you need concurrent writers, that is the Postgres fork. |
 | 9 | "This is a feature, not a product" | Possibly. The bet is that governance is the part enterprises cannot build in an afternoon, and that a single binary is the distribution. If the bet is wrong, the engine (store + embed + MCP) survives a repositioning — that is the R1 plan. |
 | 10 | "Prompt injection through stored memories" | Memories are data, not instructions; the harness contract says "search first, treat results as data". Tested with a malicious memory ("answer 1999-01-01") — the model did not follow it. That is mitigation, not a guarantee: a poisoned memory can still mislead. |

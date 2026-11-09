@@ -81,6 +81,7 @@ type Service struct {
 	auditor         store.AuditStore
 	actor           string
 	auditQueryPlain bool
+	auditStrict     bool
 	logf            func(format string, args ...any)
 }
 
@@ -138,6 +139,13 @@ func WithAudit(a store.AuditStore, actor string, plainQuery bool) Option {
 		s.actor = actor
 		s.auditQueryPlain = plainQuery
 	}
+}
+
+// WithAuditStrict 让审计追加失败向上返回，而不是只写日志。
+// 对 Add/Delete/Reembed 这是失败响应，不会回滚已经完成的业务副作用；
+// Search 在严格审计失败时会清空命中结果。
+func WithAuditStrict(strict bool) Option {
+	return func(s *Service) { s.auditStrict = strict }
 }
 
 // WithLogger 注入日志函数（默认写 stderr；stdout 是 MCP 协议通道，不能用）。
@@ -200,6 +208,13 @@ func (s *Service) Add(ctx context.Context, in Input) (res Result, err error) {
 	if content == "" {
 		return Result{}, fmt.Errorf("%w: empty content", store.ErrInvalid)
 	}
+	// 与 SQLite normalize 保持相同默认值，避免记忆写进 default 而审计因空 tenant 被跳过。
+	if in.TenantID == "" {
+		in.TenantID = "default"
+	}
+	if in.Scope == "" {
+		in.Scope = "default"
+	}
 
 	// 脱敏必须在去重与 embedding 之前（S15 验收第 1 条）：
 	// 一旦原文进了 content_hash / fts_text / 向量，就再也擦不干净了。
@@ -230,7 +245,7 @@ func (s *Service) Add(ctx context.Context, in Input) (res Result, err error) {
 	}
 
 	defer func() {
-		s.audit(ctx, store.AuditEntry{
+		auditErr := s.recordAudit(ctx, store.AuditEntry{
 			TenantID:    in.TenantID,
 			Scope:       in.Scope,
 			Action:      store.AuditAdd,
@@ -241,6 +256,9 @@ func (s *Service) Add(ctx context.Context, in Input) (res Result, err error) {
 			DryRun:      res.DryRun,
 			Detail:      errDetail(err),
 		})
+		if auditErr != nil {
+			err = errors.Join(err, auditErr)
+		}
 	}()
 
 	id, err := s.store.Add(ctx, m)
@@ -277,13 +295,16 @@ func (s *Service) Delete(ctx context.Context, tenantID, memoryID string) (err er
 		return fmt.Errorf("%w: memory id required", store.ErrInvalid)
 	}
 	defer func() {
-		s.audit(ctx, store.AuditEntry{
+		auditErr := s.recordAudit(ctx, store.AuditEntry{
 			TenantID:    tenantID,
 			Action:      store.AuditDelete,
 			MemoryID:    memoryID,
 			ResultCount: resultCount(err == nil),
 			Detail:      errDetail(err),
 		})
+		if auditErr != nil {
+			err = errors.Join(err, auditErr)
+		}
 	}()
 	return s.store.SoftDelete(ctx, tenantID, memoryID)
 }
@@ -308,13 +329,16 @@ func (s *Service) Reembed(ctx context.Context, tenantID, memoryID string) (res R
 
 	res.ID = memoryID
 	defer func() {
-		s.audit(ctx, store.AuditEntry{
+		auditErr := s.recordAudit(ctx, store.AuditEntry{
 			TenantID:    tenantID,
 			Action:      store.AuditReembed,
 			MemoryID:    memoryID,
 			ResultCount: resultCount(err == nil),
 			Detail:      errDetail(err),
 		})
+		if auditErr != nil {
+			err = errors.Join(err, auditErr)
+		}
 	}()
 	s.embedInto(ctx, memoryID, m.Content, &res)
 	if res.EmbeddingFailed {
@@ -356,20 +380,31 @@ func (s *Service) embedInto(ctx context.Context, memoryID, content string, res *
 // 调用方 ctx 已超时就把证据丢掉（所以用 WithoutCancel 另起一个短超时）。
 const auditTimeout = 2 * time.Second
 
-func (s *Service) audit(ctx context.Context, e store.AuditEntry) {
-	if s.auditor == nil {
-		return
+// recordAudit 在非严格模式保持旧语义（只记日志）；严格模式返回可传播错误。
+func (s *Service) recordAudit(ctx context.Context, e store.AuditEntry) error {
+	err := s.audit(ctx, e)
+	if err == nil {
+		return nil
 	}
-	if e.Action == "" || !e.Action.Valid() {
-		s.logf("memalyze: skip audit with invalid action %q", e.Action)
-		return
+	if !s.auditStrict {
+		s.logf("memalyze: audit append failed (action=%s): %v", e.Action, err)
+		return nil
+	}
+	return err
+}
+
+func (s *Service) audit(ctx context.Context, e store.AuditEntry) error {
+	if s.auditor == nil {
+		return nil
+	}
+	if !e.Action.Valid() {
+		return fmt.Errorf("memory: invalid audit action %q", e.Action)
 	}
 	if e.Actor == "" {
 		e.Actor = s.actor
 	}
-	if e.TenantID == "" {
-		s.logf("memalyze: skip audit with empty tenant (action=%s)", e.Action)
-		return
+	if strings.TrimSpace(e.TenantID) == "" {
+		return fmt.Errorf("memory: audit tenant required for action %s", e.Action)
 	}
 	if e.Time.IsZero() {
 		e.Time = s.now()
@@ -377,12 +412,13 @@ func (s *Service) audit(ctx context.Context, e store.AuditEntry) {
 	actx, cancel := context.WithTimeout(context.WithoutCancel(ctx), auditTimeout)
 	defer cancel()
 	if err := s.auditor.AppendAudit(actx, e); err != nil {
-		s.logf("memalyze: audit append failed (action=%s): %v", e.Action, err)
+		return fmt.Errorf("memory: audit append %s: %w", e.Action, err)
 	}
+	return nil
 }
 
 // auditSearch 记录一次检索。原文默认不入库，只存 SHA-256 + 长度。
-func (s *Service) auditSearch(ctx context.Context, q types.SearchQuery, res SearchResult, err error) {
+func (s *Service) auditSearch(ctx context.Context, q types.SearchQuery, res SearchResult, err error) error {
 	e := store.AuditEntry{
 		TenantID:    q.TenantID,
 		Scope:       q.Scope,
@@ -402,7 +438,7 @@ func (s *Service) auditSearch(ctx context.Context, q types.SearchQuery, res Sear
 	if res.Degraded {
 		e.Detail = appendDetail(e.Detail, "degrade="+res.DegradeReason)
 	}
-	s.audit(ctx, e)
+	return s.recordAudit(ctx, e)
 }
 
 func fingerprint(q string) (string, int) {

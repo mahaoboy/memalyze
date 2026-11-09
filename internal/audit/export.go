@@ -51,12 +51,15 @@ type row struct {
 	Redacted    int    `json:"redacted"`
 	DryRun      bool   `json:"dry_run"`
 	Detail      string `json:"detail,omitempty"`
+	Seq         int64  `json:"seq"`
+	PrevHash    string `json:"prev_hash"`
+	Hash        string `json:"hash"`
 }
 
 var header = []string{
 	"time", "id", "action", "actor", "tenant_id", "scope", "memory_id",
 	"query_hash", "query_len", "result_count", "degraded", "duplicate",
-	"redacted", "dry_run", "detail",
+	"redacted", "dry_run", "detail", "seq", "prev_hash", "hash",
 }
 
 func toRow(e store.AuditEntry) row {
@@ -76,6 +79,9 @@ func toRow(e store.AuditEntry) row {
 		Redacted:    e.Redacted,
 		DryRun:      e.DryRun,
 		Detail:      e.Detail,
+		Seq:         e.Seq,
+		PrevHash:    e.PrevHash,
+		Hash:        e.Hash,
 	}
 }
 
@@ -102,6 +108,7 @@ func Write(w io.Writer, entries []store.AuditEntry, format Format) error {
 				r.QueryHash, strconv.Itoa(r.QueryLen), strconv.Itoa(r.ResultCount),
 				strconv.FormatBool(r.Degraded), strconv.FormatBool(r.Duplicate),
 				strconv.Itoa(r.Redacted), strconv.FormatBool(r.DryRun), r.Detail,
+				strconv.FormatInt(r.Seq, 10), r.PrevHash, r.Hash,
 			}
 			if err := cw.Write(rec); err != nil {
 				return fmt.Errorf("audit: write row: %w", err)

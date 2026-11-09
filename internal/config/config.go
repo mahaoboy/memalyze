@@ -55,6 +55,8 @@ type Config struct {
 	// AuditQueryPlain 为 true 时检索原文进审计 Detail（MEMALYZE_AUDIT_QUERY_PLAIN），
 	// 默认 false：只存 SHA-256 + 长度。
 	AuditQueryPlain bool
+	// AuditStrict 为 true 时审计失败会返回错误（MEMALYZE_AUDIT_STRICT，默认 off）。
+	AuditStrict bool
 	// HTTPAddr 非空时改用 Streamable HTTP 传输（MEMALYZE_HTTP_ADDR，如 ":8080"）。
 	HTTPAddr string
 	// HTTPToken 是 HTTP 传输的 Bearer token（MEMALYZE_HTTP_TOKEN）。
@@ -77,6 +79,7 @@ func Load() Config {
 		AuditEnabled:    boolEnv("MEMALYZE_AUDIT", true),
 		Actor:           env("MEMALYZE_ACTOR", DefaultActor),
 		AuditQueryPlain: boolEnv("MEMALYZE_AUDIT_QUERY_PLAIN", false),
+		AuditStrict:     boolEnv("MEMALYZE_AUDIT_STRICT", false),
 
 		HTTPAddr:  env("MEMALYZE_HTTP_ADDR", ""),
 		HTTPToken: env("MEMALYZE_HTTP_TOKEN", ""),

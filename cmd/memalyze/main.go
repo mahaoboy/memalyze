@@ -91,6 +91,9 @@ usage:
       --out audit.csv           output file (default stdout)
       --db ./memalyze.db        database path (default MEMALYZE_DB)
 
+  memalyze audit verify [--json] [--checkpoint old.audit.json] [--write-checkpoint new.audit.json] [--db ./memalyze.db]
+  memalyze audit report [--format html|json] [--out report.html] [--checkpoint file] [filters]
+
   memalyze memory list [flags]  list memories as JSON lines
       --tenant acme --scope project:x --limit 20 --db ./memalyze.db
   memalyze memory get <id>      print one memory (requires --tenant if not default)
@@ -170,7 +173,10 @@ func serve(httpFlag string) {
 
 // buildService 按配置组装 memory.Service（脱敏 → 审计 → embedding）。
 func buildService(cfg config.Config, st store.Store, embedder embed.Embedder) (*memory.Service, error) {
-	opts := []memory.Option{memory.WithQueryTimeout(cfg.QueryTimeout)}
+	opts := []memory.Option{
+		memory.WithQueryTimeout(cfg.QueryTimeout),
+		memory.WithAuditStrict(cfg.AuditStrict),
+	}
 
 	if cfg.RedactMode != govern.ModeOff {
 		r, err := govern.Load(cfg.RedactRules)
