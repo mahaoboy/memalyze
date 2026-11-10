@@ -1,6 +1,6 @@
 # S21 — Packaging and distribution
 
-- **Status**: **v0.2.0 GitHub Release published and workflow asset-verified** (2026-11-09); the official MCP Registry still serves 0.1.0 because the 0.2.0 metadata publish requires a fresh GitHub device login; community channels still pending
+- **Status**: **v0.2.0 GitHub Release published and workflow asset-verified** (2026-11-09); the official MCP Registry still serves 0.1.0 while the 0.2.0 metadata awaits the approved GitHub Actions OIDC publish; community channels still pending
 - **Milestone**: M4 / S21
 - **Acceptance**: a stranger can get from zero to a working MCP server in three steps;
   the project is discoverable in at least one directory.
@@ -15,7 +15,7 @@
 | `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ end-to-end run from this host is slow (13.7 MB in 76 s, 174 KB/s); manual download + `sha256sum -c` verified, see §7 |
 | dsh / agent skill | `skills/memalyze/` | ✅ content complete |
 | `.mcpb` bundles (Claude Desktop / MCPB clients) | `make mcpb` | ✅ 4 platforms **uploaded** to v0.1.0; GitHub asset digests match `server.json` and `MCPB-SHA256SUMS`; binary inside reports `v0.1.0`; not yet opened in Claude Desktop (B8) |
-| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ v0.2.0 validated by the live registry publisher; publication requires GitHub device authorization |
+| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ v0.2.0 validated by the live registry publisher; awaiting the GitHub Actions OIDC publish |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
 | MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.1.0`); awesome PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | ClawHub listing | `make skill` produces the package | ❌ not submitted |
@@ -46,14 +46,20 @@ Since `06fb2c1` + the workflow update on 2026-10-25, `.github/workflows/release.
 completed every step successfully, including downloading and verifying the 11 published assets.
 Real macOS/Windows desktop installation remains a separate B8 check.
 
-So `git tag v0.1.1 && git push origin v0.1.1` is the whole release. One manual step remains
-**after** the workflow, because registry metadata cannot be generated before the bytes exist:
+A tag push is the whole binary/MCPB release. Registry metadata must still be generated
+**after** the workflow because its hashes cannot be known before the uploaded bytes exist:
 
 ```bash
 python3 scripts/gen-server-json.py --from-release v0.1.1   # uses GitHub's asset digests
-git commit deploy/registry/server.json -m "chore(registry): v0.1.1"
-mcp-publisher publish
+git add deploy/registry/server.json
+git commit -m "chore(registry): v0.1.1"
+git push origin main
 ```
+
+That metadata push triggers `.github/workflows/registry.yml`, which validates the file,
+authenticates with GitHub Actions OIDC (no browser or PAT), publishes, and runs
+`scripts/verify-registry.py` against the public entry. It can also be rerun with
+`workflow_dispatch`; no long-lived registry credential is stored in the repository.
 
 ## 2.2 MCPB bundles and the registry
 

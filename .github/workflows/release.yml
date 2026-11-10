@@ -65,4 +65,4 @@ jobs:
       # so the hashes must be taken from the uploaded assets. After this workflow:
       #   python3 scripts/gen-server-json.py --from-release "$TAG"
       #   git commit deploy/registry/server.json && git push
-      #   mcp-publisher publish
+      # The metadata push triggers registry.yml, which publishes with GitHub OIDC.

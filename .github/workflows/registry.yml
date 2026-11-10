@@ -1,0 +1,35 @@
+name: registry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - deploy/registry/server.json
+      - .github/workflows/registry.yml
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: install MCP publisher
+        run: |
+          go install github.com/modelcontextprotocol/registry/cmd/publisher@v1.8.8
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: validate registry metadata
+        run: publisher validate deploy/registry/server.json
+      - name: authenticate with GitHub OIDC
+        run: publisher login github-oidc
+      - name: publish registry metadata
+        run: publisher publish deploy/registry/server.json
+      - name: verify public registry entry
+        run: python3 scripts/verify-registry.py

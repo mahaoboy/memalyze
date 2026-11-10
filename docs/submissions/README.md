@@ -1,13 +1,13 @@
 # Directory & registry submissions
 
-Everything here is prepared so the remaining work is copy/paste plus a login, not writing.
-Update the tracking table at the bottom after each submission.
+Each channel lists its remaining action. MCP Registry publication uses GitHub Actions OIDC;
+update the tracking table at the bottom after each submission.
 
 Registry last checked: **2026-11-09**; other directory upstreams last checked: **2026-10-25**.
 
 | Channel | Artifact | Blocked on |
 |---|---|---|
-| MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | 0.1.0 is live; 0.2.0 metadata is generated and validated, awaiting GitHub device authorization |
+| MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | 0.1.0 is live; 0.2.0 metadata is generated and validated, awaiting the approved OIDC workflow |
 | `punkpeye/awesome-mcp-servers` | [`awesome-mcp-servers.patch`](awesome-mcp-servers.patch) + [PR text](awesome-mcp-servers-pr.md) | ✅ PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | `modelcontextprotocol/servers` | — | **do not submit** (see §3) |
 | ClawHub / dsh skill catalog | `make skill` → `dist/memalyze-skill-<version>.tar.gz` | your account |
@@ -22,7 +22,9 @@ officially supported package type, which is why this path does not need the Dock
 
 **v0.1.0 was packed locally; since v0.2.0 the release workflow builds and uploads the four
 bundles itself.** For a new tag the order becomes: let the workflow finish →
-`./scripts/verify-release.sh vX` → `gen-server-json.py --from-release vX` → commit → publish.
+`./scripts/verify-release.sh vX` → `gen-server-json.py --from-release vX` → commit and push.
+The Registry workflow then validates, publishes with GitHub Actions OIDC, and verifies the
+public entry automatically.
 
 For the original v0.1.0 flow (bundles built by hand), the order was:
 
