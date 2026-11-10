@@ -1,6 +1,6 @@
 # S21 — Packaging and distribution
 
-- **Status**: **v0.2.0 GitHub Release published and workflow asset-verified** (2026-11-09); the official MCP Registry still serves 0.1.0 while the 0.2.0 metadata awaits the approved GitHub Actions OIDC publish; community channels still pending
+- **Status**: **v0.2.0 GitHub Release and official MCP Registry publication verified** (2026-11-09); all 11 release assets and four Registry packages match their authoritative digests; community channels still pending
 - **Milestone**: M4 / S21
 - **Acceptance**: a stranger can get from zero to a working MCP server in three steps;
   the project is discoverable in at least one directory.
@@ -15,9 +15,9 @@
 | `scripts/install.sh` (curl \| sh, checksum-verified) | hand-written | ⚠️ end-to-end run from this host is slow (13.7 MB in 76 s, 174 KB/s); manual download + `sha256sum -c` verified, see §7 |
 | dsh / agent skill | `skills/memalyze/` | ✅ content complete |
 | `.mcpb` bundles (Claude Desktop / MCPB clients) | `make mcpb` | ✅ 4 platforms **uploaded** to v0.1.0; GitHub asset digests match `server.json` and `MCPB-SHA256SUMS`; binary inside reports `v0.1.0`; not yet opened in Claude Desktop (B8) |
-| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ v0.2.0 validated by the live registry publisher; awaiting the GitHub Actions OIDC publish |
+| `deploy/registry/server.json` | `scripts/gen-server-json.py` | ✅ v0.2.0 published by [GitHub Actions OIDC](https://github.com/mahaoboy/memalyze/actions/runs/42754048238); public entry and four packages independently verified |
 | Docker image | `Dockerfile` + compose | ❌ daemon unavailable (B5) |
-| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.1.0`); awesome PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
+| MCP directory listing | [`submissions/`](submissions/README.md): MCPB route (no Docker) + awesome patch | ✅ **MCP Registry live** (`io.github.mahaoboy/memalyze@0.2.0`); awesome PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | ClawHub listing | `make skill` produces the package | ❌ not submitted |
 
 ## 2. Three-step install (the acceptance test)

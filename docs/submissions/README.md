@@ -7,7 +7,7 @@ Registry last checked: **2026-11-09**; other directory upstreams last checked: *
 
 | Channel | Artifact | Blocked on |
 |---|---|---|
-| MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | 0.1.0 is live; 0.2.0 metadata is generated and validated, awaiting the approved OIDC workflow |
+| MCP Registry (`registry.modelcontextprotocol.io`) | [`../../deploy/registry/server.json`](../../deploy/registry/server.json) | ✅ `io.github.mahaoboy/memalyze@0.2.0` published and verified via [OIDC run](https://github.com/mahaoboy/memalyze/actions/runs/42754048238) |
 | `punkpeye/awesome-mcp-servers` | [`awesome-mcp-servers.patch`](awesome-mcp-servers.patch) + [PR text](awesome-mcp-servers-pr.md) | ✅ PR [#17582](https://github.com/punkpeye/awesome-mcp-servers/pull/17582) open |
 | `modelcontextprotocol/servers` | — | **do not submit** (see §3) |
 | ClawHub / dsh skill catalog | `make skill` → `dist/memalyze-skill-<version>.tar.gz` | your account |
@@ -60,8 +60,8 @@ Facts this file depends on (checked 2026-10-25):
 - Namespace `io.github.mahaoboy` is proven by logging in with the GitHub account that owns
   the repo.
 - One bundle per platform, because the MCPB manifest has no "pick the right binary" field.
-  The `packages` array therefore has four entries. This shape was accepted for v0.1.0;
-  v0.2.0 passes publisher validation and awaits authenticated publication.
+  The `packages` array therefore has four entries. This shape was accepted by the live
+  registry for both v0.1.0 and v0.2.0.
 
 For a **future** release, `server.json` must be generated from the uploaded bytes (packing is
 not byte-reproducible):
