@@ -49,3 +49,61 @@ jobs:
         with:
           name: cross-binaries
           path: dist/
+
+  docker:
+    name: docker-image-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: build image and run offline demo
+        run: |
+          docker build --build-arg VERSION=ci -t memalyze:ci .
+          docker run --rm memalyze:ci demo
+      - name: verify container health and MCP authentication
+        run: |
+          set -euo pipefail
+          token=$(openssl rand -hex 24)
+          docker run -d --name memalyze-ci \
+            -p 127.0.0.1:18080:8080 \
+            -e MEMALYZE_HTTP_TOKEN="$token" \
+            -e MEMALYZE_OLLAMA_URL=http://127.0.0.1:1 \
+            memalyze:ci
+          trap 'docker logs memalyze-ci || true; docker rm -f memalyze-ci || true' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/healthz; then
+              break
+            fi
+            if ! docker inspect -f '{{.State.Running}}' memalyze-ci | grep -qx true; then
+              echo "container exited before becoming healthy" >&2
+              exit 1
+            fi
+            if [ "$attempt" = 30 ]; then
+              echo "container health timeout" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          unauthorized=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"docker-smoke","version":"1.0"}}}' \
+            http://127.0.0.1:18080/mcp)
+          test "$unauthorized" = 401
+          curl -fsS \
+            -H "Authorization: Bearer $token" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"docker-smoke","version":"1.0"}}}' \
+            http://127.0.0.1:18080/mcp > mcp-response.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          text = Path("mcp-response.txt").read_text()
+          data_lines = [line[5:].strip() for line in text.splitlines() if line.startswith("data:")]
+          payload = json.loads(data_lines[-1] if data_lines else text)
+          assert payload["id"] == 1, payload
+          assert payload["result"]["serverInfo"], payload
+          print("authenticated MCP initialize: ok")
+          PY
