@@ -31,7 +31,7 @@ Other clients can copy [`mcp-http.json`](mcp-http.json) (substitute the token).
 
 Because there is no per-user auth yet, **one token = one trust boundary**. If two teams
 must not read each other's memories, run two containers with different tokens and volumes
-until v0.2 lands auth.
+until a future release adds auth.
 
 ## Backups
 

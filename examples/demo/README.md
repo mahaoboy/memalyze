@@ -42,4 +42,4 @@ MEMALYZE_REDACT_MODE=dry-run memalyze demo
 - No reversible redaction: once written, the original is gone (`docs/s15-redaction-audit.md` §6).
 - No audit UI: `memalyze audit export --format json` is the interface.
 - No per-user authentication yet: `actor` comes from `MEMALYZE_ACTOR`, so run one process
-  per trust boundary until v0.2 introduces auth.
+  per trust boundary until a future release introduces auth.
