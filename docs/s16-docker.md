@@ -1,6 +1,6 @@
 # S16 — Docker: five minutes to a governed memory server
 
-- **Status**: files done (2026-10-25); **image build not executed here** (see §6)
+- **Status**: image build + container HTTP/MCP smoke verified in CI (2026-11-11); full compose + Ollama stack not run (see §6)
 - **Milestone**: M3 / S16
 - **Scope**: Dockerfile, compose (memalyze + Ollama + one-shot model pull), HTTP transport
   with a mandatory token off-loopback, container healthcheck.
@@ -49,7 +49,7 @@ Point any Streamable-HTTP MCP client at `http://127.0.0.1:8080/mcp` with
 | Redaction `enforce` + audit `on` in the image env | the container should be the safe configuration by default |
 
 What this is **not**: multi-user auth. There is one token per process, and `actor` comes
-from `MEMALYZE_ACTOR`. Run one container per trust boundary until v0.2 adds per-user auth.
+from `MEMALYZE_ACTOR`. Run one container per trust boundary until a future release adds per-user auth.
 
 ## 5. Files
 
@@ -63,25 +63,30 @@ from `MEMALYZE_ACTOR`. Run one container per trust boundary until v0.2 adds per-
 
 ## 6. Verification status
 
-Verified in this environment:
+Verified on 2026-11-11 in [CI run 29](https://github.com/mahaoboy/memalyze/actions/runs/42957276152),
+using a real Docker daemon on `ubuntu-latest`:
 
-- `make build` → static binary, `./memalyze --version` OK;
-- `make release` → **5/5 cross-compiled targets** (linux/darwin amd64+arm64, windows amd64)
-  with `SHA256SUMS`;
-- HTTP smoke test: `/healthz` → `{"status":"ok"}`, `memalyze health` → `ok`,
-  `POST /mcp` without a token → `401`, and the unauthenticated-public-bind guard covered by
-  unit tests.
+- `docker build` succeeded and `docker run --rm memalyze:ci demo` exited successfully;
+- the container started with a fresh `/data` volume and `/healthz` became available;
+- `POST /mcp` without a token returned `401`;
+- `POST /mcp` with the bearer token completed a real MCP `initialize` handshake;
+- Ubuntu/macOS race tests and the five-target cross-compile also passed in the same run.
 
-**Not verified**: `docker build` / `docker compose up`. The daemon is not running in this
-environment (B5: `dial unix /var/run/docker.sock: no such file or directory`, and `sudo`
-is blocked by `no_new_privs`). The Dockerfile is therefore "written and reviewed" rather
-than "built". First action when a daemon is available:
+The first HTTP run exposed a root-owned `/data` volume under the distroless `nonroot` user.
+Commit `1246a69` creates that directory with UID/GID `65532` and keeps this runtime test in CI
+so a static Dockerfile review cannot be mistaken for a working container.
+
+**Still not verified**: `docker compose up`, the `model-pull` one-shot service, and semantic
+search through the containerized Ollama service. The local Linux host has no usable Docker
+daemon (and rootless setup lacks `uidmap`), so CI verifies the memalyze image rather than the
+full compose stack. For full-stack acceptance, run:
 
 ```bash
-make docker-build && make docker-up && curl -s http://127.0.0.1:8080/healthz
+printf 'MEMALYZE_HTTP_TOKEN=%s\n' "$(openssl rand -hex 24)" > .env
+docker compose up -d --build
+curl -fsS http://127.0.0.1:8080/healthz
+docker compose logs model-pull
 ```
-
-Recorded as B5 in `00-总览/继续点.md`.
 
 ## 7. Troubleshooting
 
