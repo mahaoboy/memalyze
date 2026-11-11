@@ -16,12 +16,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
       -trimpath \
       -ldflags "-s -w -X main.version=${VERSION}" \
       -o /out/memalyze ./cmd/memalyze
+RUN mkdir -p /out/data
 
 # ---- runtime ----
 # distroless/static: no shell, no package manager, runs as nonroot.
 FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=build /out/memalyze /usr/local/bin/memalyze
+COPY --from=build --chown=65532:65532 /out/data /data
 
 ENV MEMALYZE_DB=/data/memalyze.db \
     MEMALYZE_HTTP_ADDR=:8080 \
