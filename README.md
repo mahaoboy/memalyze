@@ -21,9 +21,9 @@ checkpoints, and local HTML/JSON governance reports.
 
 60-second product overview — what memalyze does and how the redaction + audit loop works:
 
-<video src="assets/memalyze-60s-demo.mp4" controls poster="docs/assets/demo.png" width="640">
-  Your browser does not support the video tag. <a href="assets/memalyze-60s-demo.mp4">Download the MP4</a>.
-</video>
+![memalyze product video](docs/assets/demo-video-cover.png)
+
+📺 [Watch the 60s demo video](assets/memalyze-60s-demo.mp4) — click to stream or download the MP4.
 
 ---
 
