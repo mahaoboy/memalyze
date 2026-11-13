@@ -17,6 +17,14 @@ checkpoints, and local HTML/JSON governance reports.
 
 ![memalyze governance demo](docs/assets/demo.png)
 
+## Video
+
+60-second product overview — what memalyze does and how the redaction + audit loop works:
+
+<video src="assets/memalyze-60s-demo.mp4" controls poster="docs/assets/demo.png" width="640">
+  Your browser does not support the video tag. <a href="assets/memalyze-60s-demo.mp4">Download the MP4</a>.
+</video>
+
 ---
 
 ## The problem
