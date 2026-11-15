@@ -4,8 +4,13 @@ dist/
 *.db-shm
 *.db-wal
 .env
+.secrets/
 *.local.yaml
 /memalyze
 
 # ledger writeback previews (not part of the product repo)
 .ledger-updates/
+
+# local artifacts
+.browser-shots/
+.dsh_feishu/
