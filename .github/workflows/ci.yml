@@ -35,6 +35,29 @@ jobs:
       - name: static build (CGO off)
         run: CGO_ENABLED=0 go build -trimpath ./...
 
+  # Any harness must be able to drive the binary directly: this runs the raw JSON-RPC
+  # smoke (no DSH, no Ollama) and rejects hand-edited agent instructions.
+  harness:
+    name: harness-compat (stdio)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: agent contracts are rendered from docs/agent-contract.md
+        run: node scripts/gen-agent-contracts.mjs --check
+      - name: build host binary
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 go build -trimpath -o dist/memalyze ./cmd/memalyze
+      - name: stdio MCP smoke without Ollama
+        run: MEMALYZE_BIN="$PWD/dist/memalyze" node integrations/dsh/test/mcp-smoke.mjs
+
   cross:
     name: cross-compile
     runs-on: ubuntu-latest

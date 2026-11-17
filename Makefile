@@ -47,6 +47,23 @@ skill:
 	@tar -tzf dist/memalyze-skill-$(VERSION).tar.gz
 	@ls -lh dist/memalyze-skill-$(VERSION).tar.gz
 
+# DeepSeek Harness 插件包：5 平台静态二进制（gzip）+ npm tarball
+.PHONY: dsh-package dsh-test
+dsh-package:
+	./scripts/build-dsh-plugin.sh
+
+dsh-test:
+	node integrations/dsh/test/setup-plugin.test.mjs
+	node integrations/dsh/test/mcp-smoke.mjs
+
+# 渲染 harness 共用指令块（docs/agent-contract.md → CLAUDE.md / .clinerules / SKILL.md）
+.PHONY: contracts contracts-check
+contracts:
+	node scripts/gen-agent-contracts.mjs
+
+contracts-check:
+	node scripts/gen-agent-contracts.mjs --check
+
 clean:
 	rm -f $(BIN)
 	rm -rf dist

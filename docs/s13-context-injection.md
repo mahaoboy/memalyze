@@ -172,6 +172,10 @@ Copy-paste files:
 - Claude Code project instructions: [`examples/claude-code/CLAUDE.md`](../examples/claude-code/CLAUDE.md)
 - Cline project rules: [`examples/cline/.clinerules`](../examples/cline/.clinerules)
 
+All three (plus the DSH and ClawHub skills) are now rendered from
+[`docs/agent-contract.md`](agent-contract.md) by `make contracts`, so the shared rule block
+cannot drift between harnesses. This document keeps the history and the test results.
+
 ## 5. Harness recipes
 
 ### 5.1 Claude Code

@@ -82,14 +82,18 @@ Details and transcripts: [`docs/s15-redaction-audit.md`](docs/s15-redaction-audi
 
 ## Quick start
 
+**Ollama is optional.** Without it memalyze still stores and searches memories: adds
+succeed with `embedding_failed: true` and search falls back to keyword/FTS with
+`degraded: true`. Add Ollama when you want semantic recall.
+
 ### 1. Binary + local embedding model
 
 Prebuilt, checksum-verified (Linux/macOS; Windows: take the `.exe` from the release page):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mahaoboy/memalyze/main/scripts/install.sh | sh
-ollama pull qwen3-embedding:0.6b      # ~640 MB, 1024-dim, strong on Chinese
 memalyze --version
+ollama pull qwen3-embedding:0.6b      # optional: ~640 MB, 1024-dim, strong on Chinese
 ```
 
 From source (`Go 1.27+`): `make build`, then `./memalyze --version`.
@@ -104,6 +108,22 @@ cp examples/claude-code/CLAUDE.md ./CLAUDE.md   # makes Claude search before ans
 ```
 
 Cline: copy `examples/cline/cline_mcp_settings.json` and `.clinerules`.
+
+DeepSeek Harness — one command, no separate binary install (the plugin copies a static
+binary to `~/.memalyze/bin` at boot and registers the agent skill):
+
+```bash
+dsh plugin --profile web add dsh-plugin-memalyze
+# restart DSH; data lives in ~/.memalyze/memalyze.db
+```
+
+The plugin is **packaging only**: the same Go binary and the same four MCP tools serve
+Claude Code, Cline and HTTP deployments; only the install path and the tool prefix differ.
+The agent instructions for every harness are rendered from one
+[`docs/agent-contract.md`](docs/agent-contract.md), so "when to search" cannot drift
+between them. Details: [`integrations/dsh/`](integrations/dsh/) and
+[`docs/s25-dsh-plugin.md`](docs/s25-dsh-plugin.md).
+
 Generic harness: [`examples/custom-harness/`](examples/custom-harness) — one prompt contract
 plus pseudocode. All options: [`examples/README.md`](examples/README.md).
 
@@ -301,7 +321,9 @@ CI (no daemon in the dev environment), brute-force vector scan, Chinese-first de
 | [`docs/s13-context-injection.md`](docs/s13-context-injection.md) | the prompt contract that makes models search |
 | [`docs/s14-end-to-end.md`](docs/s14-end-to-end.md) | real harness, two sessions, cold-start numbers |
 | [`docs/s21-distribution.md`](docs/s21-distribution.md) | release artifacts, channels, post-release checklist |
-| [`docs/s21-submissions.md`](docs/s21-submissions.md) | copy-paste entries for MCP directories and ClawHub |
+| [`docs/s21-submissions.md`](docs/s21-submissions.md) | copy-paste entries for MCP directories, DSH and ClawHub |
+| [`docs/s25-dsh-plugin.md`](docs/s25-dsh-plugin.md) | DSH plugin design, verification results, known gaps |
+| [`docs/agent-contract.md`](docs/agent-contract.md) | one agent contract rendered into CLAUDE.md, .clinerules, DSH and ClawHub skills |
 | [`docs/s23-feedback-log.md`](docs/s23-feedback-log.md) | live feedback log (currently empty, honestly) |
 | [`docs/s24-review.md`](docs/s24-review.md) | the milestone review template (not yet filled) |
 | [`SECURITY.md`](SECURITY.md) | threat model: what is defended, what is out of scope |

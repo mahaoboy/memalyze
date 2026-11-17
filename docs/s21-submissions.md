@@ -61,10 +61,42 @@ Submission fields (adapt to whatever the form asks):
 - **Name**: `memalyze`
 - **One-liner**: persistent, self-hosted memory for agents — redaction before write, audit on read
 - **Install**: `curl -fsSL https://raw.githubusercontent.com/mahaoboy/memalyze/main/scripts/install.sh | sh`
-- **Requires**: Ollama + `qwen3-embedding:0.6b` (or any OpenAI-compatible embedder later)
+- **Requires**: Ollama optional — without it adds still succeed and search uses keyword/FTS (`degraded: true`)
 - **Homepage**: https://github.com/mahaoboy/memalyze
 
-## 5. Tracking
+## 5. DeepSeek Harness plugin (`dsh-plugin-memalyze`)
+
+One-command install inside DSH; verified end-to-end (see [`s25-dsh-plugin.md`](s25-dsh-plugin.md)).
+
+```bash
+dsh plugin --profile web add dsh-plugin-memalyze   # or ./dist/dsh-plugin-memalyze-0.2.0.tgz
+# restart DSH
+```
+
+- Package: `integrations/dsh/` → `dist/dsh-plugin-memalyze-<version>.tgz`
+  (5 gzipped binaries; 32 MB; npm tarball limit is 500 MB)
+- Rebuild: `make dsh-package && make dsh-test`
+- No install script: the Cordis setup plugin copies the binary to `~/.memalyze/bin` at boot
+- dsh-plugin.org prerequisites: **public** GitHub repo, `dsh-plugin` topic on the repo,
+  tarball URL. Neither the topic nor the submission has been done yet.
+
+DSH plugin listing fields:
+
+- **Name**: `dsh-plugin-memalyze`
+- **One-liner**: persistent, self-hosted memory for DSH agents — redaction before write, audit on read
+- **Install**: `dsh plugin --profile <profile> add dsh-plugin-memalyze`
+- **Requires**: DSH 0.2.0-rc.2+, Node ≥ 22.19; Ollama optional
+- **Repo**: https://github.com/mahaoboy/memalyze/tree/main/integrations/dsh
+
+## 6. Claude marketplace
+
+Claude's directory rules were checked earlier: ≤ 256 KiB per file, repo < 50 MiB, no
+compiled executables — so the 32 MB binary tarball cannot go there. The route is a
+**self-hosted marketplace** (`.claude-plugin/marketplace.json` + `plugins/memalyze/` that
+references the released binary), which Claude Code can add from a Git URL. Skeleton not
+written yet.
+
+## 7. Tracking
 
 | Directory | Submitted | Link | Outcome |
 |---|---|---|---|
@@ -72,3 +104,7 @@ Submission fields (adapt to whatever the form asks):
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
 | MCP registry | 2026-10-25 | https://registry.modelcontextprotocol.io/v0/servers?search=memalyze | ✅ published `io.github.mahaoboy/memalyze@0.1.0` (4 mcpb packages) |
 | ClawHub | — | — | skill bundle ready |
+| DSH plugin (`dsh-plugin-memalyze`) | — | local tgz, sha256 `26e0d421…` | package + e2e verified; npm publish pending approval |
+| dsh-plugin.org | — | — | blocked on public repo + `dsh-plugin` topic |
+| GitHub topic `dsh-plugin` | — | — | not added |
+| Claude self-hosted marketplace | — | — | skeleton not written |

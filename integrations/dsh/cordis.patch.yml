@@ -1,0 +1,46 @@
+# dsh-plugin-memalyze — profile bundle patch.
+#
+# Two rows:
+#   1. the setup plugin in this package: creates ~/.memalyze, installs the
+#      matching Go binary, and registers the memalyze skill;
+#   2. the official stdio MCP bridge: exposes memory_add / memory_search /
+#      memory_delete / echo as mcp__memalyze__*.
+#
+# The setup row must stay before the MCP row so the binary exists before the
+# child process is spawned. Keep the server name `memalyze`: the skill and the
+# docs use it as a stable contract.
+
+- insert:
+    - id: memalyze-setup
+      name: 'dsh-plugin-memalyze'
+
+    - id: mcp-memalyze
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: memalyze
+        transport: stdio
+        command: !!js >-
+          process.getBuiltinModule('node:path').join(
+            process.getBuiltinModule('node:os').homedir(),
+            '.memalyze', 'bin',
+            process.platform === 'win32' ? 'memalyze.exe' : 'memalyze'
+          )
+        args: []
+        # Only the database location is fixed. Redaction (enforce) and audit (on)
+        # are memalyze defaults; Ollama is optional and ambient env can override it.
+        env:
+          MEMALYZE_DB: !!js >-
+            process.getBuiltinModule('node:path').join(
+              process.getBuiltinModule('node:os').homedir(),
+              '.memalyze', 'memalyze.db'
+            )
+          MEMALYZE_ACTOR: dsh
+        cwd: !!js >-
+          process.getBuiltinModule('node:path').join(
+            process.getBuiltinModule('node:os').homedir(),
+            '.memalyze'
+          )
+        # A cold Ollama embedding can take ~20s on the first write; searches
+        # still have their own 3s budget and degrade to keyword search.
+        toolCallTimeoutMs: 30000
+        failOnStartupError: false
