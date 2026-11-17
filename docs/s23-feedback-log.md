@@ -45,3 +45,34 @@ Decision needed: post HN/Reddit/V2EX → S22 completion
 - Downloads from our own verification inflate the number; subtract them when reading.
 - A star without an install is not feedback; ask "did you deploy it" before recording praise.
 - The first install failure is worth more than ten "looks cool" comments — record it verbatim.
+
+## 2026-11-17 — Outreach round 1 closed: 5 P1 threads, 0 replies
+
+Read-only Gmail API check (account `mahaoboy@gmail.com`). Each thread was fetched with
+`format=metadata`; every message's sender was verified individually, not inferred from the
+unread list.
+
+| Target | Thread ID | Messages | From us | From them | Last send |
+|---|---|---|---|---|---|
+| Dify | `1a183900325a99ad` | 3 | 3 | 0 | 2026-11-11 |
+| Open WebUI | `1a1839054cf70940` | 3 | 3 | 0 | 2026-11-11 |
+| Roo Code | `1a183906e61d2fbd` | 3 | 3 | 0 | 2026-11-11 |
+| Jan | `1a183908cac3790f` | 3 | 3 | 0 | 2026-11-11 |
+| Goose | `1a18390abe086c27` | 3 | 3 | 0 | 2026-11-11 |
+
+Cross-checks:
+
+- All 16 target domains, 120 days, `from:` filter → 0 inbound messages.
+- `memalyze -from:mahaoboy@gmail.com` over 120 days → 0 results.
+- Spam folder (30 days) → no outreach replies, only unrelated junk.
+- No delivery failure for any outreach address; recent bounces are internal
+  `test.dev` / `wenwen.dev` test mail only.
+- Round totals: 27 sends across 11 contacted targets, 0 human replies.
+
+Decision: close this round per the task-board rule. Do not send a 4th message to these
+addresses. S22/S23 remain open only for non-email channels (Registry / awesome) and for the
+first real deployment.
+
+Next route: small integration shops and independent deployers, not platform `support@`
+inboxes. First message offers a remote install plus a poisoned-memory demo, and asks for one
+install record — not a meeting.
