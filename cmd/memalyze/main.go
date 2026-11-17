@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -119,6 +120,13 @@ func serve(httpFlag string) {
 	}
 	ctx := context.Background()
 
+	// 插件把数据库放在 ~/.memalyze/memalyze.db；首次启动时目录可能还不存在。
+	// SQLite 不会替我们创建父目录，所以在这里补上，避免“装好了但起不来”。
+	if err := ensureDBDir(cfg.DBPath); err != nil {
+		fmt.Fprintf(os.Stderr, "memalyze: create database directory: %v\n", err)
+		os.Exit(1)
+	}
+
 	st, err := sqlite.Open(ctx, cfg.DBPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "memalyze: open database: %v\n", err)
@@ -169,6 +177,20 @@ func serve(httpFlag string) {
 		fmt.Fprintf(os.Stderr, "memalyze: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// ensureDBDir 创建 SQLite 文件的父目录。内存库和 file: URI 不碰。
+// 目录权限用 0700：记忆库可能包含用户偏好、项目决策，默认不对其他用户开放。
+func ensureDBDir(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" || path == ":memory:" || strings.HasPrefix(path, "file:") {
+		return nil
+	}
+	dir := filepath.Dir(path)
+	if dir == "." || dir == string(filepath.Separator) {
+		return nil
+	}
+	return os.MkdirAll(dir, 0o700)
 }
 
 // buildService 按配置组装 memory.Service（脱敏 → 审计 → embedding）。

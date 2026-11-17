@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -45,6 +47,29 @@ func TestDBPathOrFallsBackToConfig(t *testing.T) {
 	}
 	if got := dbPathOr("/tmp/explicit.db"); got != "/tmp/explicit.db" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestEnsureDBDirCreatesParent(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "state")
+	db := filepath.Join(dir, "memalyze.db")
+	if err := ensureDBDir(db); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("%s is not a directory", dir)
+	}
+}
+
+func TestEnsureDBDirSkipsNonFiles(t *testing.T) {
+	for _, path := range []string{"", ":memory:", "file::memory:?cache=shared", "memalyze.db"} {
+		if err := ensureDBDir(path); err != nil {
+			t.Fatalf("ensureDBDir(%q): %v", path, err)
+		}
 	}
 }
 
