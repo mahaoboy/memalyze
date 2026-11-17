@@ -104,7 +104,7 @@ written yet.
 | modelcontextprotocol/servers | n/a | — | not accepted (issues only) |
 | MCP registry | 2026-10-25 | https://registry.modelcontextprotocol.io/v0/servers?search=memalyze | ✅ published `io.github.mahaoboy/memalyze@0.1.0` (4 mcpb packages) |
 | ClawHub | — | — | skill bundle ready |
-| DSH plugin (`dsh-plugin-memalyze`) | — | local tgz, sha256 `26e0d421…` | package + e2e verified; npm publish pending approval |
+| DSH plugin (`dsh-plugin-memalyze`) | — | local tgz, sha256 `73b2a2ba…` | package + e2e verified; npm publish pending login |
 | dsh-plugin.org | — | — | blocked on public repo + `dsh-plugin` topic |
 | GitHub topic `dsh-plugin` | — | — | not added |
 | Claude self-hosted marketplace | — | — | skeleton not written |

@@ -34,6 +34,9 @@
     "sqlite",
     "self-hosted"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "homepage": "https://github.com/mahaoboy/memalyze",
   "repository": {
     "type": "git",

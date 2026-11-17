@@ -112,7 +112,7 @@ HOME=/tmp/memalyze-dsh-home DSH_HOME=/home/mahao/.dsh dsh --profile dshmemtest "
 ### 3.1 Build
 
 - 5 platforms compiled; tarball `dist/dsh-plugin-memalyze-0.2.0.tgz`, **32.0 MB**
-  (31 MB on disk, 11 files, sha256 `26e0d421…` after the contract refactor). The size is
+  (31 MB on disk, 11 files, sha256 `73b2a2ba…`). The size is
   the five gzipped binaries; npm's tarball limit is 500 MB.
 
 ### 3.2 Setup plugin test
