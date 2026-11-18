@@ -198,6 +198,19 @@ Result:
   answered `BLUE-7`, so the registry-installed package, binary, skill and tool prefix all
   work end-to-end.
 
+Two more paths were checked on the registry install:
+
+- **Upgrade keeps data.** `dsh plugin remove` + `add` from the registry reinstalled in
+  under 1 s (pnpm store hit), the setup plugin re-extracted the binary, and the same DB
+  answered `BLUE-7` again.
+- **No Ollama.** A fresh `HOME` booted with `MEMALYZE_OLLAMA_URL=http://127.0.0.1:9`:
+  `memory_add` returned `embedding_failed=true` and stored the row; `memory_search`
+  returned `degraded=true`, `degrade_reason=vector_error`, with a keyword hit for
+  `offline marker GREEN-3`.
+
+Local gates after the release: `make dsh-test` (setup plugin + raw MCP smoke) and
+`go test -count=1 ./...` both pass.
+
 A version can be published only once: do not retry `publish` while the placeholder is
 showing, and treat `0.0.0-stage` as a scan artifact rather than a usable release.
 
