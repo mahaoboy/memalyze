@@ -1,7 +1,8 @@
 # S25 — DeepSeek Harness plugin package
 
-- **Status**: MVP verified end-to-end on Linux x64 (2026-11-17); macOS/Windows binaries built but
-  not executed on real hardware; not yet published to npm / dsh-plugin.org
+- **Status**: MVP verified end-to-end on Linux x64 (2026-11-17); published to npm as
+  `dsh-plugin-memalyze@0.2.0` and installed from the registry (2026-11-18); macOS/Windows
+  binaries built but not executed on real hardware; dsh-plugin.org submission still pending
 - **Milestone**: M5 / distribution
 - **Scope**: `integrations/dsh/` (Cordis setup plugin + patch + runtime skill + tests),
   `scripts/build-dsh-plugin.sh`, 5-platform gzipped binaries, one npm tarball.
@@ -161,12 +162,51 @@ Boot with `MEMALYZE_OLLAMA_URL=http://127.0.0.1:9` (connection refused):
 `dshmemtest`, the skill tool returned the regenerated block (`The four rules`,
 `mcp__memalyze__memory_search`) and `mcp__memalyze__echo` replied `CONTRACT-OK`.
 
+### 3.8 npm registry end-to-end (2026-11-18)
+
+`dsh-plugin-memalyze@0.2.0` was published from a maintainer terminal (the agent session is
+policy-blocked from publishing). `npm publish` reported success, but the registry served only
+`0.0.0-stage` ("Temporary package placeholder for staged publishing") for about 15 minutes
+while npm scanned the version: `latest` moved to `0.2.0` at 21:36 local, and the tarball
+answered 200 at 21:39. The served tarball is byte-identical to the one `make dsh-package`
+produced:
+
+- `sha256 73b2a2ba…` for both `dist/dsh-plugin-memalyze-0.2.0.tgz` and the download from
+  `registry.npmjs.org` (32,006,519 bytes);
+- `dist.integrity = sha512-dkWhB9Bji…` matches the publish output.
+
+Clean-profile install from the registry (the machine's default npm registry is the
+read-only `npmmirror` mirror, so pnpm needs an explicit `--registry`):
+
+```bash
+dsh --profile dshnpmtest --from-default-profile headless --dump-config
+dsh plugin --profile dshnpmtest add dsh-plugin-memalyze@0.2.0 \
+    --registry=https://registry.npmjs.org/
+HOME=/tmp/memalyze-dsh-home-npm DSH_HOME=/home/mahao/.dsh \
+    dsh --profile dshnpmtest "..."
+```
+
+Result:
+
+- pnpm resolved and installed `0.2.0` from npmjs.org in 5 s; plain
+  `npm_config_registry=…` is ignored by the DSH/pnpm path, `--registry` is not.
+- boot logged `[memalyze] binary ready: /tmp/memalyze-dsh-home-npm/.memalyze/bin/memalyze`
+  and `[memalyze] skill registered: memalyze`.
+- session A stored `The npm launch code is BLUE-7` under `project:npme2e`
+  (`id=01M7QE7MCAQ740FQR76KB7CJTT`; embedding warmup 21.5 s on a cold model).
+- a second `dsh` process with the same isolated `HOME` searched with **no scope** and
+  answered `BLUE-7`, so the registry-installed package, binary, skill and tool prefix all
+  work end-to-end.
+
+A version can be published only once: do not retry `publish` while the placeholder is
+showing, and treat `0.0.0-stage` as a scan artifact rather than a usable release.
+
 ## 4. Known gaps
 
 | Gap | Impact | Next |
 |---|---|---|
 | macOS arm64/x64 and Windows x64 binaries not executed | first-user risk on non-Linux | run `make dsh-test` on those machines before announcing |
-| Not published to npm | needs `npm adduser` + approval | `npm publish` from `integrations/dsh` after approval |
+| npm serves `0.0.0-stage` before a scanned version | first install after publish can pick the placeholder | wait for `npm view … version` to equal the release; never republish the same version |
 | Not submitted to dsh-plugin.org | needs public repo + `dsh-plugin` GitHub topic + tarball | do after publish decision |
 | MCP `toolCallTimeoutMs` is 30 s | a cold Ollama model load (>20 s) plus search could exceed it | acceptable for now; 3 s query budget already caps search |
 | No automatic upgrade of `~/.memalyze/bin` while the old binary is running on Windows | marker version changes only after a restart | documented as "restart DSH after upgrading" |
