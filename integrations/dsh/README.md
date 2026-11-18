@@ -33,6 +33,24 @@ dsh plugin --profile web add ./dsh-plugin-memalyze-0.2.0.tgz
 A source checkout must run `make dsh-package` first, because the binary assets
 are build artifacts and are not committed.
 
+### Registry mirrors and the scan placeholder
+
+`dsh plugin add` installs through pnpm, which follows the registry configured for
+your user. A read-only mirror (for example `registry.npmmirror.com`, the default
+on many machines in China) may not have the new version yet, or may still serve
+npm's `0.0.0-stage` scan placeholder. Check and bypass the mirror:
+
+```bash
+npm view dsh-plugin-memalyze version   # must print the release, e.g. 0.2.0
+dsh plugin --profile web add dsh-plugin-memalyze \
+    --registry=https://registry.npmjs.org/
+```
+
+`0.0.0-stage` ("Temporary package placeholder for staged publishing") means npm
+is still scanning the version; it is not installable and no action is needed on
+your side. `npm_config_registry=…` alone is not enough for the pnpm path — pass
+`--registry` explicitly.
+
 ## Requirements
 
 - DSH 0.2.0-rc.2 or newer
