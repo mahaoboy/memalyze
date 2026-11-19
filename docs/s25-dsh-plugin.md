@@ -1,8 +1,9 @@
 # S25 — DeepSeek Harness plugin package
 
 - **Status**: MVP verified end-to-end on Linux x64 (2026-11-17); published to npm as
-  `dsh-plugin-memalyze@0.2.0` and installed from the registry (2026-11-18); macOS/Windows
-  binaries built but not executed on real hardware; dsh-plugin.org submission still pending
+  `dsh-plugin-memalyze@0.2.0` and installed from the registry (2026-11-18); submitted to
+  dsh-plugin.org (2026-11-19, topic + root `package.json`, issue #849); macOS/Windows
+  binaries built but not executed on real hardware
 - **Milestone**: M5 / distribution
 - **Scope**: `integrations/dsh/` (Cordis setup plugin + patch + runtime skill + tests),
   `scripts/build-dsh-plugin.sh`, 5-platform gzipped binaries, one npm tarball.
