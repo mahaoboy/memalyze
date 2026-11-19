@@ -1,0 +1,28 @@
+{
+  "name": "dsh-plugin-memalyze",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Self-hosted agent memory for DeepSeek Harness: one Go binary, SQLite, redaction before write, audited reads, four MCP tools.",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://github.com/mahaoboy/memalyze",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mahaoboy/memalyze.git"
+  },
+  "main": "integrations/dsh/index.js",
+  "dsh": {
+    "bundle": {
+      "patch": "./integrations/dsh/cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "memory",
+    "agent-memory",
+    "mcp",
+    "sqlite",
+    "self-hosted"
+  ]
+}

@@ -62,6 +62,7 @@ The plugin's `skills/` directory is **not** auto-discovered by DSH, so `index.js
 ### 2.4 Package layout
 
 ```
+package.json            repo root: name/version for dsh-plugin.org scanning
 integrations/dsh/
   package.json          dsh.bundle.patch -> ./cordis.patch.yml
   cordis.patch.yml      memalyze-setup + @deepseek-ai/dsh-mcp-client
@@ -213,6 +214,11 @@ Local gates after the release: `make dsh-test` (setup plugin + raw MCP smoke) an
 
 A version can be published only once: do not retry `publish` while the placeholder is
 showing, and treat `0.0.0-stage` as a scan artifact rather than a usable release.
+
+The repository root carries a small `package.json` (`private: true`, same name and version,
+`main` and `dsh.bundle` pointing into `integrations/dsh/`). dsh-plugin.org requires a root
+`package.json` to identify the plugin and match the npm package; bump its `version` together
+with `integrations/dsh/package.json`.
 
 ## 4. Known gaps
 
